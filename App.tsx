@@ -1,7 +1,7 @@
-// File: App.tsx - FINAL VERSION WITH SUPABASE AUTHENTICATION
+// File: App.tsx
 import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, NavLink, useParams } from 'react-router-dom';
-import { HomeIcon, UsersIcon, GlobeAltIcon, UserCircleIcon } from './constants'; // MOCK data is no longer used for users
+import { HomeIcon, UsersIcon, GlobeAltIcon, UserCircleIcon } from './constants';
 import PostUploader from './components/PostUploader';
 import MatchmakingForm from './components/MatchmakingForm';
 import DestinationExplorer from './components/DestinationExplorer';
@@ -13,204 +13,73 @@ import AuthPage from './components/auth/AuthPage';
 import AccountSetupPage from './components/auth/AccountSetupPage';
 import LikesModal from './components/LikesModal';
 import PostCard from './components/PostCard';
-// ADDED: Import the Supabase client we created
-import { supabase } from './supabaseClient';
+import { getSupabase } from './supabaseClient';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
-const HomePage: React.FC<{
-    posts: Post[];
-    addPost: (newPost: Post) => void;
-    openEditModal: (post: Post) => void;
-    currentUser: User;
-    onToggleLike: (postId: number) => void;
-    onAddComment: (postId: number, commentText: string) => void;
-    onOpenLikesModal: (post: Post) => void;
-    onDeletePost: (postId: number) => void;
-}> = ({ posts, addPost, openEditModal, currentUser, onToggleLike, onAddComment, onOpenLikesModal, onDeletePost }) => {
-    return (
-        <div className="max-w-2xl mx-auto py-8 px-4">
-            <PostUploader onPost={addPost} currentUser={currentUser} />
-            <div className="mt-8 space-y-6">
-                {posts.map(post => (
-                    <PostCard
-                        key={post.id}
-                        post={post}
-                        onEdit={openEditModal}
-                        currentUser={currentUser}
-                        onToggleLike={onToggleLike}
-                        onAddComment={onAddComment}
-                        onOpenLikesModal={onOpenLikesModal}
-                        onDelete={onDeletePost}
-                    />
-                ))}
-            </div>
-        </div>
-    );
-};
-
-const ProfilePage: React.FC<{
-    currentUser: User;
-    allUsers: User[];
-    posts: Post[];
-    onUpdateUser: (updatedUser: User) => void;
-    onLogout: () => void;
-    onToggleLike: (postId: number) => void;
-    onAddComment: (postId: number, commentText: string) => void;
-    onOpenLikesModal: (post: Post) => void;
-    onEditPost: (post: Post) => void;
-    onDeletePost: (postId: number) => void;
-}> = ({ currentUser, allUsers, posts, onUpdateUser, onLogout, onToggleLike, onAddComment, onOpenLikesModal, onEditPost, onDeletePost }) => {
-    const { userId } = useParams<{ userId: string }>();
-    // NOTE: This will be updated later to fetch specific user profiles from the database
-    const userToShow = userId ? allUsers.find(u => u.id === userId) : currentUser;
-
-    if (!userToShow) {
-        return <div className="text-center p-8">User not found.</div>;
-    }
-
-    const isCurrentUserProfile = userToShow.id === currentUser.id;
-
-    return (
-        <UserProfile
-            user={userToShow}
-            currentUser={currentUser}
-            isCurrentUserProfile={isCurrentUserProfile}
-            onUpdateUser={isCurrentUserProfile ? onUpdateUser : undefined}
-            onLogout={isCurrentUserProfile ? onLogout : undefined}
-            posts={posts}
-            onToggleLike={onToggleLike}
-            onAddComment={onAddComment}
-            onOpenLikesModal={onOpenLikesModal}
-            onEditPost={onEditPost}
-            onDeletePost={onDeletePost}
-        />
-    );
-};
-
+// (These small components are included here for simplicity)
+const HomePage: React.FC<{ posts: Post[]; addPost: (newPost: Post) => void; openEditModal: (post: Post) => void; currentUser: User; onToggleLike: (postId: number) => void; onAddComment: (postId: number, commentText: string) => void; onOpenLikesModal: (post: Post) => void; onDeletePost: (postId: number) => void; }> = ({ posts, addPost, openEditModal, currentUser, onToggleLike, onAddComment, onOpenLikesModal, onDeletePost }) => ( <div className="max-w-2xl mx-auto py-8 px-4"> <PostUploader onPost={addPost} currentUser={currentUser} /> <div className="mt-8 space-y-6"> {posts.map(post => ( <PostCard key={post.id} post={post} onEdit={openEditModal} currentUser={currentUser} onToggleLike={onToggleLike} onAddComment={onAddComment} onOpenLikesModal={onOpenLikesModal} onDelete={onDeletePost} /> ))} </div> </div> );
+const ProfilePage: React.FC<{ currentUser: User; allUsers: User[]; posts: Post[]; onUpdateUser: (updatedUser: User) => void; onLogout: () => void; onToggleLike: (postId: number) => void; onAddComment: (postId: number, commentText: string) => void; onOpenLikesModal: (post: Post) => void; onEditPost: (post: Post) => void; onDeletePost: (postId: number) => void; }> = ({ currentUser, allUsers, posts, onUpdateUser, onLogout, onToggleLike, onAddComment, onOpenLikesModal, onEditPost, onDeletePost }) => { const { userId } = useParams<{ userId: string }>(); const userToShow = userId ? allUsers.find(u => u.id === userId) : currentUser; if (!userToShow) { return <div className="text-center p-8">User not found.</div>; } const isCurrentUserProfile = userToShow.id === currentUser.id; return ( <UserProfile user={userToShow} currentUser={currentUser} isCurrentUserProfile={isCurrentUserProfile} onUpdateUser={isCurrentUserProfile ? onUpdateUser : undefined} onLogout={isCurrentUserProfile ? onLogout : undefined} posts={posts} onToggleLike={onToggleLike} onAddComment={onAddComment} onOpenLikesModal={onOpenLikesModal} onEditPost={onEditPost} onDeletePost={onDeletePost} /> ); };
 
 const App: React.FC = () => {
   const [posts, setPosts] = useState<Post[]>([]);
-  const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [allUsers, setAllUsers] = useState<User[]>([]); 
   const [editingPost, setEditingPost] = useState<Post | null>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [viewingLikesOfPost, setViewingLikesOfPost] = useState<Post | null>(null);
-  const [settings, setSettings] = useState({
-    isPrivate: false,
-    notifyMatches: true,
-    notifyLikes: true,
-  });
+  const [settings, setSettings] = useState({ isPrivate: false, notifyMatches: true, notifyLikes: true });
+  const [supabase, setSupabase] = useState<SupabaseClient | null>(null);
 
-  // ADDED: This core useEffect hook manages the user's login state via Supabase.
   useEffect(() => {
-    // This function runs once to check if a user is already logged in from a previous session.
-    const getSession = async () => {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-            const user: User = { id: session.user.id, name: session.user.email!, email: session.user.email!, avatarUrl: `https://api.dicebear.com/8.x/adventurer/svg?seed=${session.user.email!}`, profileComplete: false, bio: '', coverPhotoUrl: '', interests: [], travelStyle: [], miles: 0, partners: 0, placesCount: 0, trips: 0 };
-            setCurrentUser(user);
-        }
-    };
-    getSession();
-
-    // This listener runs every time a user logs in or out in real-time.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const initialize = async () => {
+      const supabaseClient = await getSupabase();
+      setSupabase(supabaseClient); 
+      const { data: { session } } = await supabaseClient.auth.getSession();
       if (session) {
         const user: User = { id: session.user.id, name: session.user.email!, email: session.user.email!, avatarUrl: `https://api.dicebear.com/8.x/adventurer/svg?seed=${session.user.email!}`, profileComplete: false, bio: '', coverPhotoUrl: '', interests: [], travelStyle: [], miles: 0, partners: 0, placesCount: 0, trips: 0 };
         setCurrentUser(user);
-      } else {
-        setCurrentUser(null);
       }
-    });
-
-    return () => subscription.unsubscribe(); // Cleanup the listener when the app closes
+      const { data: { subscription } } = supabaseClient.auth.onAuthStateChange((_event, session) => {
+        if (session) {
+          const user: User = { id: session.user.id, name: session.user.email!, email: session.user.email!, avatarUrl: `https://api.dicebear.com/8.x/adventurer/svg?seed=${session.user.email!}`, profileComplete: false, bio: '', coverPhotoUrl: '', interests: [], travelStyle: [], miles: 0, partners: 0, placesCount: 0, trips: 0 };
+          setCurrentUser(user);
+        } else {
+          setCurrentUser(null);
+        }
+      });
+      return () => subscription.unsubscribe();
+    };
+    initialize();
   }, []);
-
-  // This useEffect hook loads posts from our Vercel Postgres database.
+  
   useEffect(() => {
     const fetchPosts = async () => {
       try {
         const response = await fetch('/api/api/posts');
         const data = await response.json();
         if (response.ok) setPosts(data);
-      } catch (error) {
-        console.error("Error fetching posts:", error);
-      }
+      } catch (error) { console.error("Error fetching posts:", error); }
     };
     fetchPosts();
   }, []);
 
-  // REMOVED: Old handleLogin and handleRegister are gone because Supabase handles them now.
-
-  const handleAccountSetupComplete = (completedUser: User) => {
-      const fullyCompletedUser = { ...completedUser, profileComplete: true };
-      setCurrentUser(fullyCompletedUser);
-      updateUser(fullyCompletedUser);
-  };
-
-  // CHANGED: handleLogout now securely signs the user out via Supabase.
-  const handleLogout = async () => {
-      const { error } = await supabase.auth.signOut();
-      if (error) console.error('Error logging out:', error);
-      setCurrentUser(null);
-  };
-
-  const handleUpdateSettings = (newSettings: typeof settings) => {
-      setSettings(newSettings);
-  };
-
-  // This function still works perfectly with our Vercel Postgres database for posts.
-  const addPost = async (newPost: Post) => {
-    if (!currentUser) return;
-    try {
-      const response = await fetch('/api/api/posts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: newPost.content, author_name: currentUser.name }),
-      });
-      if (!response.ok) throw new Error('Failed to save post.');
-      // Refresh the post list to show the new one
-      const postsResponse = await fetch('/api/api/posts');
-      const latestPosts = await postsResponse.json();
-      setPosts(latestPosts);
-    } catch (error) {
-      console.error("Error adding post:", error);
-    }
-  };
-
-  const updatePost = (updatedPost: Post) => {
-      setPosts(prevPosts => prevPosts.map(p => p.id === updatedPost.id ? updatedPost : p));
-      setEditingPost(null);
-  };
-
-  const deletePost = (postId: number) => {
-    setPosts(prevPosts => prevPosts.filter(p => p.id !== postId));
-  };
-
+  const handleAccountSetupComplete = (completedUser: User) => { const fullyCompletedUser = { ...completedUser, profileComplete: true }; setCurrentUser(fullyCompletedUser); updateUser(fullyCompletedUser); };
+  const handleLogout = async () => { if (!supabase) return; const { error } = await supabase.auth.signOut(); if (error) console.error('Error logging out:', error); setCurrentUser(null); };
+  const handleUpdateSettings = (newSettings: typeof settings) => { setSettings(newSettings); };
+  const addPost = async (newPost: Post) => { if (!currentUser) return; try { const response = await fetch('/api/api/posts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: newPost.content, author_name: currentUser.name }), }); if (!response.ok) throw new Error('Failed to save post.'); const postsResponse = await fetch('/api/api/posts'); const latestPosts = await postsResponse.json(); setPosts(latestPosts); } catch (error) { console.error("Error adding post:", error); } };
+  const updatePost = (updatedPost: Post) => { setPosts(prevPosts => prevPosts.map(p => p.id === updatedPost.id ? updatedPost : p)); setEditingPost(null); };
+  const deletePost = (postId: number) => { setPosts(prevPosts => prevPosts.filter(p => p.id !== postId)); };
   const openEditModal = (post: Post) => setEditingPost(post);
   const closeEditModal = () => setEditingPost(null);
   const openLikesModal = (post: Post) => setViewingLikesOfPost(post);
   const closeLikesModal = () => setViewingLikesOfPost(null);
-
-  const updateUser = (updatedUser: User) => {
-      // NOTE: This will be updated later to save profile changes to a 'profiles' table in your database.
-      if (currentUser && currentUser.id === updatedUser.id) {
-        setCurrentUser(updatedUser);
-      }
-  };
-
-  // NOTE: Likes, comments, and connections will be the next features to move to the database.
+  const updateUser = (updatedUser: User) => { if (currentUser && currentUser.id === updatedUser.id) { setCurrentUser(updatedUser); } };
   const handleToggleLike = (postId: number) => {};
   const handleAddComment = (postId: number, commentText: string) => {};
   const handleAddConnection = (partnerId: number) => {};
 
-  // CHANGED: If there is no currentUser, we show the Supabase AuthPage. This is the core logic.
-  if (!currentUser) {
-    return <AuthPage />;
-  }
-
-  // NOTE: The account setup page will be the next feature to integrate properly with the database.
-  if (!currentUser.profileComplete) {
-      return <AccountSetupPage user={currentUser} onSetupComplete={handleAccountSetupComplete} />;
-  }
+  if (!supabase) { return <div className="min-h-screen flex items-center justify-center">Loading...</div>; }
+  if (!currentUser) { return <AuthPage />; }
+  if (!currentUser.profileComplete) { return <AccountSetupPage user={currentUser} onSetupComplete={handleAccountSetupComplete} />; }
 
   return (
     <HashRouter>
