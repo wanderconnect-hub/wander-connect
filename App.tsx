@@ -1,8 +1,7 @@
-
-
 import React from 'react';
 import { HashRouter, Routes, Route, NavLink, useParams } from 'react-router-dom';
-import { HomeIcon, UsersIcon, GlobeAltIcon, UserCircleIcon, MOCK_POSTS, MOCK_USERS } from './constants';
+// CHANGED: MOCK_POSTS has been removed from this import line.
+import { HomeIcon, UsersIcon, GlobeAltIcon, UserCircleIcon, MOCK_USERS } from './constants';
 import PostUploader from './components/PostUploader';
 import MatchmakingForm from './components/MatchmakingForm';
 import DestinationExplorer from './components/DestinationExplorer';
@@ -86,7 +85,8 @@ const ProfilePage: React.FC<{
 
 
 const App: React.FC = () => {
-  const [posts, setPosts] = React.useState<Post[]>(MOCK_POSTS);
+  // CHANGED: Initialized posts with an empty array.
+  const [posts, setPosts] = React.useState<Post[]>([]);
   const [allUsers, setAllUsers] = React.useState<User[]>(MOCK_USERS);
   const [editingPost, setEditingPost] = React.useState<Post | null>(null);
   const [currentUser, setCurrentUser] = React.useState<User | null>(null);
@@ -96,6 +96,24 @@ const App: React.FC = () => {
     notifyMatches: true,
     notifyLikes: true,
   });
+
+  // ADDED: This useEffect hook fetches posts from the database when the app starts.
+  React.useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        const response = await fetch('/api/api/posts');
+        const data = await response.json();
+        if (response.ok) {
+          setPosts(data);
+        } else {
+          console.error("Failed to fetch posts:", data.error);
+        }
+      } catch (error) {
+        console.error("An error occurred while fetching posts:", error);
+      }
+    };
+    fetchPosts();
+  }, []); // The empty array means this runs only once on startup.
 
   const handleLogin = (user: User) => {
     setCurrentUser(user);
@@ -135,12 +153,33 @@ const App: React.FC = () => {
       setSettings(newSettings);
   };
 
-  const addPost = (newPost: Post) => {
-      setPosts(prevPosts => [{
-        ...newPost,
-        likedByUserIds: [],
-        comments: [],
-      }, ...prevPosts]);
+  // CHANGED: The addPost function now saves to the database via our new API.
+  const addPost = async (newPost: Post) => {
+    if (!currentUser) return;
+
+    try {
+      // 1. Send the new post to our backend to save it
+      const response = await fetch('/api/api/posts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content: newPost.content,
+          author_name: currentUser.name, // Send the current user's name
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save the post.');
+      }
+
+      // 2. Refresh the posts list from the database to show the new post
+      const postsResponse = await fetch('/api/api/posts');
+      const latestPosts = await postsResponse.json();
+      setPosts(latestPosts);
+
+    } catch (error) {
+      console.error("Error adding post:", error);
+    }
   };
 
   const updatePost = (updatedPost: Post) => {
