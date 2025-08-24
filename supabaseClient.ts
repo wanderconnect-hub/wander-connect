@@ -1,8 +1,8 @@
-// File: supabaseClient.ts - FINAL SIMPLE VERSION
+// File: supabaseClient.ts - FINAL ROBUST VERSION
 import { createClient } from '@supabase/supabase-js'
 
-// This is the standard and correct way to access variables in a Vite project.
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL!
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY!
+// CHANGED: We now use process.env, which our new vite.config.ts will provide.
+const supabaseUrl = process.env.VITE_SUPABASE_URL!
+const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY!
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
