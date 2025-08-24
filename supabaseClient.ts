@@ -1,16 +1,8 @@
-// File: supabaseClient.ts - DEBUGGING VERSION
+// File: supabaseClient.ts - FINAL CORRECTED VERSION
 import { createClient } from '@supabase/supabase-js'
 
-// 
-// THIS IS THE MOST IMPORTANT LINE FOR DEBUGGING:
-// It will print the value that Vercel is actually sending to your application.
-//
-console.log("Vercel provided this Supabase URL:", import.meta.env.VITE_SUPABASE_URL);
+// CHANGED: We now use process.env because our vite.config.ts is defining it for us.
+const supabaseUrl = process.env.VITE_SUPABASE_URL!
+const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY!
 
-
-// This code attempts to read the environment variables from Vercel.
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL!
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY!
-
-// This creates the Supabase client that your app will use.
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
