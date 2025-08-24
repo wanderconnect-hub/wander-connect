@@ -1,7 +1,10 @@
-// src/services/geminiService.ts
+// File: services/geminiService.ts - FINAL CORRECTED VERSION
 import type { DestinationInfo, User, MatchResult, TravelPartnerRequest } from '../types';
 
+//
 // FUNCTION 1: For the Destination Explorer page
+// This calls your /api/api/generate serverless function.
+//
 export async function getDestinationInfo(destinationName: string): Promise<DestinationInfo> {
   const prompt = `
     Provide a travel guide for ${destinationName}. 
@@ -17,7 +20,6 @@ export async function getDestinationInfo(destinationName: string): Promise<Desti
     The output must be only the JSON object.
   `;
 
-  // Calls our first serverless function
   const res = await fetch('/api/api/generate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -37,7 +39,10 @@ export async function getDestinationInfo(destinationName: string): Promise<Desti
 }
 
 
+//
 // FUNCTION 2: For the Matchmaking form
+// This calls your /api/api/findMatches serverless function.
+//
 export async function findTravelMatches(
   currentUser: User, 
   allUsers: User[],
@@ -64,14 +69,13 @@ export async function findTravelMatches(
     Analyze the profiles and the request. Provide a compatibility score (1-100) and a brief reason for each of the top 3 matches.
     Return the response as a single, valid JSON array with the following structure:
     [
-      { "userId": <ID of matched user>, "compatibilityScore": <number>, "reason": "<string>" },
-      { "userId": <ID of matched user>, "compatibilityScore": <number>, "reason": "<string>" },
-      { "userId": <ID of matched user>, "compatibilityScore": <number>, "reason": "<string>" }
+      { "userId": "<ID of matched user>", "compatibilityScore": <number>, "reason": "<string>" },
+      { "userId": "<ID of matched user>", "compatibilityScore": <number>, "reason": "<string>" },
+      { "userId": "<ID of matched user>", "compatibilityScore": <number>, "reason": "<string>" }
     ]
     Only output the JSON array. Do not include any other text or markdown.
   `;
 
-  // Calls our SECOND serverless function
   const res = await fetch('/api/api/findMatches', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
