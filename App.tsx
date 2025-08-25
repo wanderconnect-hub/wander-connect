@@ -13,7 +13,7 @@ import AuthPage from './components/auth/AuthPage';
 import AccountSetupPage from './components/auth/AccountSetupPage';
 import LikesModal from './components/LikesModal';
 import PostCard from './components/PostCard';
-import { jwtDecode } from 'jwt-decode'; // This is the only special import we need now
+import { jwtDecode } from 'jwt-decode';
 
 // (HomePage and ProfilePage components are fine as they were)
 const HomePage: React.FC<{ posts: Post[]; addPost: (newPost: Post) => void; openEditModal: (post: Post) => void; currentUser: User; onToggleLike: (postId: number) => void; onAddComment: (postId: number, commentText: string) => void; onOpenLikesModal: (post: Post) => void; onDeletePost: (postId: number) => void; }> = ({ posts, addPost, openEditModal, currentUser, onToggleLike, onAddComment, onOpenLikesModal, onDeletePost }) => ( <div className="max-w-2xl mx-auto py-8 px-4"> <PostUploader onPost={addPost} currentUser={currentUser} /> <div className="mt-8 space-y-6"> {posts.map(post => ( <PostCard key={post.id} post={post} onEdit={openEditModal} currentUser={currentUser} onToggleLike={onToggleLike} onAddComment={onAddComment} onOpenLikesModal={onOpenLikesModal} onDelete={onDeletePost} /> ))} </div> </div> );
@@ -36,7 +36,7 @@ const App: React.FC = () => {
         setCurrentUser(user);
       } catch (error) {
         console.error("Invalid token:", error);
-        localStorage.removeItem('authToken'); // Clear invalid token
+        localStorage.removeItem('authToken');
       }
     }
   }, []);
@@ -44,7 +44,7 @@ const App: React.FC = () => {
   useEffect(() => {
     const fetchPosts = async () => {
       try {
-        const response = await fetch('/api/posts'); // Using the correct, shorter path
+        const response = await fetch('/api/posts');
         const data = await response.json();
         if (response.ok) setPosts(data);
       } catch (error) { console.error("Error fetching posts:", error); }
@@ -80,7 +80,6 @@ const App: React.FC = () => {
   const handleAddConnection = (partnerId: number) => {};
 
   if (!currentUser) { return <AuthPage onLogin={handleLogin} />; }
-  // We are temporarily disabling the AccountSetupPage
   // if (!currentUser.profileComplete) { return <AccountSetupPage user={currentUser} onSetupComplete={handleAccountSetupComplete} />; }
 
   return (
