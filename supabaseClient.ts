@@ -1,8 +1,17 @@
-// File: supabaseClient.ts - FINAL ROBUST VERSION
-import { createClient } from '@supabase/supabase-js'
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
-// CHANGED: We now use process.env, which our new vite.config.ts will provide.
-const supabaseUrl = process.env.VITE_SUPABASE_URL!
-const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY!
+let supabase: SupabaseClient | null = null;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export function getSupabase() {
+  if (supabase) return supabase;
+
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error("Supabase URL or Key is missing from environment variables.");
+  }
+
+  supabase = createClient(supabaseUrl, supabaseAnonKey);
+  return supabase;
+}
