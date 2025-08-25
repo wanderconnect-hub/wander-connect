@@ -1,9 +1,9 @@
-// File: /api/api/config.js
+// File: /api/api/config.js - FINAL CORRECTED VERSION
 export default function handler(req, res) {
-  // This function runs ONLY on the server, where the variables are safe.
-  // It sends the public keys to the frontend when asked.
+  // CHANGED: We are now using the standard variable names without the 'VITE_' prefix.
+  // This is the correct way for a Vercel serverless function to read them.
   res.status(200).json({
-    supabaseUrl: process.env.VITE_SUPABASE_URL,
-    supabaseAnonKey: process.env.VITE_SUPABASE_ANON_KEY,
+    supabaseUrl: process.env.SUPABASE_URL,
+    supabaseAnonKey: process.env.SUPABASE_ANON_KEY,
   });
 }
