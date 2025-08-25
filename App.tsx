@@ -15,6 +15,8 @@ import LikesModal from './components/LikesModal';
 import PostCard from './components/PostCard';
 import { getSupabase } from './supabaseClient';
 import type { SupabaseClient } from '@supabase/supabase-js';
+console.log("DEBUG Supabase URL:", import.meta.env.VITE_SUPABASE_URL);
+console.log("DEBUG Supabase Key:", import.meta.env.VITE_SUPABASE_ANON_KEY);
 
 // (These small components are included here for simplicity)
 const HomePage: React.FC<{ posts: Post[]; addPost: (newPost: Post) => void; openEditModal: (post: Post) => void; currentUser: User; onToggleLike: (postId: number) => void; onAddComment: (postId: number, commentText: string) => void; onOpenLikesModal: (post: Post) => void; onDeletePost: (postId: number) => void; }> = ({ posts, addPost, openEditModal, currentUser, onToggleLike, onAddComment, onOpenLikesModal, onDeletePost }) => ( <div className="max-w-2xl mx-auto py-8 px-4"> <PostUploader onPost={addPost} currentUser={currentUser} /> <div className="mt-8 space-y-6"> {posts.map(post => ( <PostCard key={post.id} post={post} onEdit={openEditModal} currentUser={currentUser} onToggleLike={onToggleLike} onAddComment={onAddComment} onOpenLikesModal={onOpenLikesModal} onDelete={onDeletePost} /> ))} </div> </div> );
