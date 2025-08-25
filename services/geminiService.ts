@@ -20,7 +20,7 @@ export async function getDestinationInfo(destinationName: string): Promise<Desti
     The output must be only the JSON object.
   `;
 
-  const res = await fetch('/api/api/generate', {
+  const res = await fetch('/api/generate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ prompt }),
@@ -76,7 +76,7 @@ export async function findTravelMatches(
     Only output the JSON array. Do not include any other text or markdown.
   `;
 
-  const res = await fetch('/api/api/findMatches', {
+  const res = await fetch('/api/findMatches', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ prompt }),
