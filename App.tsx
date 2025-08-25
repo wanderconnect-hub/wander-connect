@@ -1,4 +1,4 @@
-// File: App.tsx
+// File: App.tsx - FINAL CORRECTED VERSION
 import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, NavLink, useParams } from 'react-router-dom';
 import { HomeIcon, UsersIcon, GlobeAltIcon, UserCircleIcon } from './constants';
@@ -13,47 +13,38 @@ import AuthPage from './components/auth/AuthPage';
 import AccountSetupPage from './components/auth/AccountSetupPage';
 import LikesModal from './components/LikesModal';
 import PostCard from './components/PostCard';
-import { getSupabase } from './supabaseClient';
-import type { SupabaseClient } from '@supabase/supabase-js';
+import { jwtDecode } from 'jwt-decode'; // This is the only special import we need now
 
+// (HomePage and ProfilePage components are fine as they were)
 const HomePage: React.FC<{ posts: Post[]; addPost: (newPost: Post) => void; openEditModal: (post: Post) => void; currentUser: User; onToggleLike: (postId: number) => void; onAddComment: (postId: number, commentText: string) => void; onOpenLikesModal: (post: Post) => void; onDeletePost: (postId: number) => void; }> = ({ posts, addPost, openEditModal, currentUser, onToggleLike, onAddComment, onOpenLikesModal, onDeletePost }) => ( <div className="max-w-2xl mx-auto py-8 px-4"> <PostUploader onPost={addPost} currentUser={currentUser} /> <div className="mt-8 space-y-6"> {posts.map(post => ( <PostCard key={post.id} post={post} onEdit={openEditModal} currentUser={currentUser} onToggleLike={onToggleLike} onAddComment={onAddComment} onOpenLikesModal={onOpenLikesModal} onDelete={onDeletePost} /> ))} </div> </div> );
-const ProfilePage: React.FC<{ currentUser: User; allUsers: User[]; posts: Post[]; onUpdateUser: (updatedUser: User) => void; onLogout: () => void; onToggleLike: (postId: number) => void; onAddComment: (postId: number, commentText: string) => void; onOpenLikesModal: (post: Post) => void; onEditPost: (post: Post) => void; onDeletePost: (postId: number) => void; }> = ({ currentUser, allUsers, posts, onUpdateUser, onLogout, onToggleLike, onAddComment, onOpenLikesModal, onEditPost, onDeletePost }) => { const { userId } = useParams<{ userId: string }>(); const userToShow = userId ? allUsers.find(u => u.id === userId) : currentUser; if (!userToShow) { return <div className="text-center p-8">User not found.</div>; } const isCurrentUserProfile = userToShow.id === currentUser.id; return ( <UserProfile user={userToShow} currentUser={currentUser} isCurrentUserProfile={isCurrentUserProfile} onUpdateUser={isCurrentUserProfile ? onUpdateUser : undefined} onLogout={isCurrentUserProfile ? onLogout : undefined} posts={posts} onToggleLike={onToggleLike} onAddComment={onAddComment} onOpenLikesModal={onOpenLikesModal} onEditPost={onEditPost} onDeletePost={onDeletePost} /> ); };
+const ProfilePage: React.FC<{ currentUser: User; allUsers: User[]; posts: Post[]; onUpdateUser: (updatedUser: User) => void; onLogout: () => void; onToggleLike: (postId: number) => void; onAddComment: (postId: number, commentText: string) => void; onOpenLikesModal: (post: Post) => void; onEditPost: (post: Post) => void; onDeletePost: (postId: number) => void; }> = ({ currentUser, allUsers, posts, onUpdateUser, onLogout, onToggleLike, onAddComment, onOpenLikesModal, onEditPost, onDeletePost }) => { const { userId } = useParams<{ userId: string }>(); const userToShow = userId ? allUsers.find(u => u.id === parseInt(userId, 10)) : currentUser; if (!userToShow) { return <div className="text-center p-8">User not found.</div>; } const isCurrentUserProfile = userToShow.id === currentUser.id; return ( <UserProfile user={userToShow} currentUser={currentUser} isCurrentUserProfile={isCurrentUserProfile} onUpdateUser={isCurrentUserProfile ? onUpdateUser : undefined} onLogout={isCurrentUserProfile ? onLogout : undefined} posts={posts} onToggleLike={onToggleLike} onAddComment={onAddComment} onOpenLikesModal={onOpenLikesModal} onEditPost={onEditPost} onDeletePost={onDeletePost} /> ); };
 
 const App: React.FC = () => {
   const [posts, setPosts] = useState<Post[]>([]);
-  const [allUsers, setAllUsers] = useState<User[]>([]); 
+  const [allUsers, setAllUsers] = useState<User[]>([]);
   const [editingPost, setEditingPost] = useState<Post | null>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [viewingLikesOfPost, setViewingLikesOfPost] = useState<Post | null>(null);
   const [settings, setSettings] = useState({ isPrivate: false, notifyMatches: true, notifyLikes: true });
-  const [supabase, setSupabase] = useState<SupabaseClient | null>(null);
 
   useEffect(() => {
-    const initialize = async () => {
-      const supabaseClient = await getSupabase();
-      setSupabase(supabaseClient); 
-      const { data: { session } } = await supabaseClient.auth.getSession();
-      if (session) {
-        const user: User = { id: session.user.id, name: session.user.email!, email: session.user.email!, avatarUrl: `https://api.dicebear.com/8.x/adventurer/svg?seed=${session.user.email!}`, profileComplete: false, bio: '', coverPhotoUrl: '', interests: [], travelStyle: [], miles: 0, partners: 0, placesCount: 0, trips: 0 };
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      try {
+        const decoded: { userId: number; name: string; email: string; } = jwtDecode(token);
+        const user: User = { id: decoded.userId, name: decoded.name, email: decoded.email, avatarUrl: `https://api.dicebear.com/8.x/adventurer/svg?seed=${decoded.name}`, profileComplete: true, bio: '', coverPhotoUrl: '', interests: [], travelStyle: [], miles: 0, partners: 0, placesCount: 0, trips: 0 };
         setCurrentUser(user);
+      } catch (error) {
+        console.error("Invalid token:", error);
+        localStorage.removeItem('authToken'); // Clear invalid token
       }
-      const { data: { subscription } } = supabaseClient.auth.onAuthStateChange((_event, session) => {
-        if (session) {
-          const user: User = { id: session.user.id, name: session.user.email!, email: session.user.email!, avatarUrl: `https://api.dicebear.com/8.x/adventurer/svg?seed=${session.user.email!}`, profileComplete: false, bio: '', coverPhotoUrl: '', interests: [], travelStyle: [], miles: 0, partners: 0, placesCount: 0, trips: 0 };
-          setCurrentUser(user);
-        } else {
-          setCurrentUser(null);
-        }
-      });
-      return () => subscription.unsubscribe();
-    };
-    initialize();
+    }
   }, []);
   
   useEffect(() => {
     const fetchPosts = async () => {
       try {
-        const response = await fetch('/api/api/posts');
+        const response = await fetch('/api/posts'); // Using the correct, shorter path
         const data = await response.json();
         if (response.ok) setPosts(data);
       } catch (error) { console.error("Error fetching posts:", error); }
@@ -61,10 +52,22 @@ const App: React.FC = () => {
     fetchPosts();
   }, []);
 
-  const handleAccountSetupComplete = (completedUser: User) => { const fullyCompletedUser = { ...completedUser, profileComplete: true }; setCurrentUser(fullyCompletedUser); updateUser(fullyCompletedUser); };
-  const handleLogout = async () => { if (!supabase) return; const { error } = await supabase.auth.signOut(); if (error) console.error('Error logging out:', error); setCurrentUser(null); };
+  const handleLogin = (token: string) => {
+    localStorage.setItem('authToken', token);
+    const decoded: { userId: number; name: string; email: string; } = jwtDecode(token);
+    const user: User = { id: decoded.userId, name: decoded.name, email: decoded.email, avatarUrl: `https://api.dicebear.com/8.x/adventurer/svg?seed=${decoded.name}`, profileComplete: true, bio: '', coverPhotoUrl: '', interests: [], travelStyle: [], miles: 0, partners: 0, placesCount: 0, trips: 0 };
+    setCurrentUser(user);
+  };
+  
+  const handleLogout = () => {
+      localStorage.removeItem('authToken');
+      setCurrentUser(null);
+  };
+  
+  const addPost = async (newPost: Post) => { if (!currentUser) return; try { const response = await fetch('/api/posts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: newPost.content, author_name: currentUser.name }), }); if (!response.ok) throw new Error('Failed to save post.'); const postsResponse = await fetch('/api/posts'); const latestPosts = await postsResponse.json(); setPosts(latestPosts); } catch (error) { console.error("Error adding post:", error); } };
+  
+  const handleAccountSetupComplete = (completedUser: User) => {};
   const handleUpdateSettings = (newSettings: typeof settings) => { setSettings(newSettings); };
-  const addPost = async (newPost: Post) => { if (!currentUser) return; try { const response = await fetch('/api/api/posts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: newPost.content, author_name: currentUser.name }), }); if (!response.ok) throw new Error('Failed to save post.'); const postsResponse = await fetch('/api/api/posts'); const latestPosts = await postsResponse.json(); setPosts(latestPosts); } catch (error) { console.error("Error adding post:", error); } };
   const updatePost = (updatedPost: Post) => { setPosts(prevPosts => prevPosts.map(p => p.id === updatedPost.id ? updatedPost : p)); setEditingPost(null); };
   const deletePost = (postId: number) => { setPosts(prevPosts => prevPosts.filter(p => p.id !== postId)); };
   const openEditModal = (post: Post) => setEditingPost(post);
@@ -76,9 +79,9 @@ const App: React.FC = () => {
   const handleAddComment = (postId: number, commentText: string) => {};
   const handleAddConnection = (partnerId: number) => {};
 
-  if (!supabase) { return <div className="min-h-screen flex items-center justify-center">Loading...</div>; }
-  if (!currentUser) { return <AuthPage />; }
-  if (!currentUser.profileComplete) { return <AccountSetupPage user={currentUser} onSetupComplete={handleAccountSetupComplete} />; }
+  if (!currentUser) { return <AuthPage onLogin={handleLogin} />; }
+  // We are temporarily disabling the AccountSetupPage
+  // if (!currentUser.profileComplete) { return <AccountSetupPage user={currentUser} onSetupComplete={handleAccountSetupComplete} />; }
 
   return (
     <HashRouter>
