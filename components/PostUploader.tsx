@@ -1,32 +1,3 @@
-const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // ... it creates a newPost object ...
-
-    // THIS IS THE KEY LINE:
-    onPost(newPost); 
-
-    // ... then it resets the form ...
-};```
-
-The line `onPost(newPost)` does **not** send data to the server. It calls a function that was passed down from a parent component. Its only job is to add the new post to the *local state* of your application so you can see it on the screen immediately. It never saves the post to your database.
-
-The 400 error you were seeing was likely caused by another piece of code that was trying to refetch all posts after you "posted," but the new post was never actually created.
-
-### The Solution: Add the `fetch` Call
-
-We need to modify the `handleSubmit` function to actually send the data to your `/api/posts` endpoint before doing anything else.
-
----
-
-### **Replace Your Entire `PostUploader.tsx` File**
-
-This is the most foolproof way to fix it. Please **delete everything** in your `components/PostUploader.tsx` file and **replace it with this complete, corrected code.**
-
-I have rewritten the `handleSubmit` function to correctly communicate with your backend.
-
-```tsx
-// File: components/PostUploader.tsx
-
 import React, { useState } from 'react';
 import { PhotoIcon, XMarkIcon } from '../constants';
 import type { Post, User } from '../types';
@@ -69,47 +40,34 @@ const PostUploader: React.FC<PostUploaderProps> = ({ onPost, currentUser }) => {
     setIsExpanded(false);
   };
 
-  // --- THIS FUNCTION HAS BEEN REWRITTEN ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmedCaption = caption.trim();
-    // Your code expects content, so we must send it. A file is optional.
     if (!trimmedCaption) {
       alert('Post content cannot be empty.');
       return;
     }
     
     try {
-      // 1. Send the data to your backend API
       const response = await fetch('/api/posts', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          content: trimmedCaption,          // Use 'content' to match the backend
-          author_name: currentUser.name,    // Use 'author_name' to match the backend
+          content: trimmedCaption,
+          author_name: currentUser.name,
         }),
       });
 
       if (!response.ok) {
-        // If the server responds with an error, show it
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to save post.');
       }
 
-      // 2. If the API call is successful, then update the local UI
-      // NOTE: We will let the parent component refetch the posts to get the real ID from the database
-      // For a quick UI update, you can still use the onPost prop if you refactor it.
-      // For now, let's just alert the user and reset.
       alert('Post created successfully!');
       
-      // A better approach would be to refetch all posts from the parent component
-      // onPost(newPost); // This would add a post with a fake ID. Let's skip it for now.
-
-      // 3. Reset the form
       resetForm();
-      // You might want to trigger a data refresh in the parent component here
 
     } catch (error) {
       console.error('Error creating post:', error);
