@@ -10,6 +10,7 @@ import type { User, Post } from '../types';
 import EditProfileModal from './EditProfileModal';
 import ProfilePostGrid from './ProfilePostGrid';
 import PostDetailModal from './PostDetailModal';
+import PostUploader from './PostUploader'; // <--- ADDED IMPORT
 
 // Helper to format large numbers
 const formatStat = (num: number = 0) => {
@@ -34,9 +35,23 @@ interface UserProfileProps {
     onOpenLikesModal: (post: Post) => void;
     onEditPost: (post: Post) => void;
     onDeletePost: (postId: number) => void;
+    onNewPost?: () => void; // <--- ADDED PROP TO TRIGGER REFRESH
 }
 
-const UserProfile: React.FC<UserProfileProps> = ({ user, currentUser, isCurrentUserProfile, posts, onUpdateUser, onLogout, onToggleLike, onAddComment, onOpenLikesModal, onEditPost, onDeletePost }) => {
+const UserProfile: React.FC<UserProfileProps> = ({ 
+    user, 
+    currentUser, 
+    isCurrentUserProfile, 
+    posts, 
+    onUpdateUser, 
+    onLogout, 
+    onToggleLike, 
+    onAddComment, 
+    onOpenLikesModal, 
+    onEditPost, 
+    onDeletePost,
+    onNewPost // <--- ADDED PROP
+}) => {
   const miles = user.miles ?? 0;
   const goal = (Math.floor(miles / 10000) + 1) * 10000;
   const progressPercentage = (miles / goal) * 100;
@@ -62,9 +77,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, currentUser, isCurrentU
   
   const handleNavigate = (direction: 'next' | 'prev') => {
     if (selectedPostIndex === null) return;
-
     const newIndex = direction === 'next' ? selectedPostIndex + 1 : selectedPostIndex - 1;
-
     if (newIndex >= 0 && newIndex < userPosts.length) {
         setSelectedPostIndex(newIndex);
     }
@@ -85,11 +98,9 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, currentUser, isCurrentU
             setIsSettingsOpen(false);
         }
     };
-
     if (isSettingsOpen) {
         document.addEventListener('mousedown', handleClickOutside);
     }
-
     return () => {
         document.removeEventListener('mousedown', handleClickOutside);
     };
@@ -128,69 +139,46 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, currentUser, isCurrentU
   return (
     <>
     <div className="max-w-2xl mx-auto bg-white">
+        {/* ... (Cover Photo, Settings Button, Avatar code is unchanged) ... */}
         <div className="relative">
-            {/* Cover Photo */}
             <div className="h-48 sm:h-56 bg-stone-200">
-                {user.coverPhotoUrl && (
-                <img
-                    src={user.coverPhotoUrl}
-                    alt={`${user.name}'s cover photo`}
-                    className="w-full h-full object-cover"
-                />
-                )}
+                {user.coverPhotoUrl && <img src={user.coverPhotoUrl} alt={`${user.name}'s cover photo`} className="w-full h-full object-cover" />}
             </div>
-
-            {/* Settings Button */}
             {isCurrentUserProfile && (
                 <div className="absolute top-4 right-4 z-30" ref={settingsRef}>
-                <button
-                    onClick={toggleSettings}
-                    className="text-white bg-black/30 backdrop-blur-sm hover:bg-black/50 transition-colors p-2 rounded-full"
-                    aria-label="Settings"
-                    aria-haspopup="true"
-                    aria-expanded={isSettingsOpen}
-                >
-                    <Cog6ToothIcon className="w-6 h-6" />
-                </button>
-                {isSettingsOpen && (
-                    <div className="absolute top-full right-0 mt-2 bg-white rounded-xl shadow-2xl border border-stone-200/80 w-56 overflow-hidden animate-fade-in-down z-40">
-                        <ul className="py-1">
-                            <MenuItem icon={<PencilSquareIcon className="w-5 h-5" />} text="Edit Profile" onClick={() => { setIsEditProfileOpen(true); setIsSettingsOpen(false); }} />
-                            <MenuItem icon={<Cog6ToothIcon className="w-5 h-5" />} text="Settings" onClick={() => { navigate('/settings'); setIsSettingsOpen(false); }} />
-                            <li className="border-t border-stone-200/80 my-1"></li>
-                            <MenuItem icon={<ArrowLeftOnRectangleIcon className="w-5 h-5" />} text="Log Out" onClick={handleLogout} isDestructive />
-                        </ul>
-                    </div>
-                )}
+                    <button onClick={toggleSettings} className="text-white bg-black/30 backdrop-blur-sm hover:bg-black/50 transition-colors p-2 rounded-full" aria-label="Settings" aria-haspopup="true" aria-expanded={isSettingsOpen}>
+                        <Cog6ToothIcon className="w-6 h-6" />
+                    </button>
+                    {isSettingsOpen && (
+                        <div className="absolute top-full right-0 mt-2 bg-white rounded-xl shadow-2xl border border-stone-200/80 w-56 overflow-hidden animate-fade-in-down z-40">
+                            <ul className="py-1">
+                                <MenuItem icon={<PencilSquareIcon className="w-5 h-5" />} text="Edit Profile" onClick={() => { setIsEditProfileOpen(true); setIsSettingsOpen(false); }} />
+                                <MenuItem icon={<Cog6ToothIcon className="w-5 h-5" />} text="Settings" onClick={() => { navigate('/settings'); setIsSettingsOpen(false); }} />
+                                <li className="border-t border-stone-200/80 my-1"></li>
+                                <MenuItem icon={<ArrowLeftOnRectangleIcon className="w-5 h-5" />} text="Log Out" onClick={handleLogout} isDestructive />
+                            </ul>
+                        </div>
+                    )}
                 </div>
             )}
-
-            {/* Avatar */}
             <div className="absolute -bottom-16 left-1/2 -translate-x-1/2">
                 <div className="h-32 w-32 rounded-full overflow-hidden border-4 border-white shadow-lg bg-stone-200">
-                    <img
-                        src={user.avatarUrl}
-                        alt={user.name}
-                        className="w-full h-full object-cover"
-                    />
+                    <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" />
                 </div>
             </div>
         </div>
 
-        {/* User Info & Stats */}
+        {/* ... (User Info & Stats section is unchanged) ... */}
         <div className="pt-20 px-4 pb-6 text-center">
             <h1 className="text-2xl font-bold text-stone-800">{user.name}</h1>
             <p className="mt-2 text-stone-600 whitespace-pre-line text-sm max-w-md mx-auto">{user.bio}</p>
         </div>
-        
-        {/* Stats & Progress */}
         <div className="px-4 pb-6 border-b border-stone-200">
             <div className="flex justify-around items-center">
                 <Stat value={trips.toString()} label={trips === 1 ? 'Trip' : 'Trips'} />
                 <Stat value={placesCount.toString()} label={placesCount === 1 ? 'Place' : 'Places'} />
                 <Stat value={partners.toString()} label={partners === 1 ? 'Buddy' : 'Buddies'} />
             </div>
-
             <section className="mt-6">
                 <div className="flex justify-between items-center text-sm mb-1">
                     <div className="flex items-center gap-2 text-stone-600 font-semibold">
@@ -200,44 +188,28 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, currentUser, isCurrentU
                     <span className="font-mono text-xs text-stone-500">{formatStat(miles)} / {formatStat(goal)} mi</span>
                 </div>
                 <div className="w-full bg-stone-200 rounded-full h-2">
-                    <div 
-                        className="bg-cyan-600 h-2 rounded-full transition-all duration-500 ease-out" 
-                        style={{ width: `${progressPercentage}%` }}
-                    ></div>
+                    <div className="bg-cyan-600 h-2 rounded-full transition-all duration-500 ease-out" style={{ width: `${progressPercentage}%` }}></div>
                 </div>
             </section>
         </div>
 
+        {/* --- THIS IS THE NEW SECTION --- */}
+        {isCurrentUserProfile && onNewPost && (
+            <div className="px-4 py-6 border-b border-stone-200">
+                <PostUploader currentUser={currentUser} onPost={onNewPost} />
+            </div>
+        )}
+
         {/* Post Grid */}
         <ProfilePostGrid posts={userPosts} onPostClick={handleOpenPost} />
     </div>
+
+    {/* ... (Modals are unchanged) ... */}
     {isCurrentUserProfile && isEditProfileOpen && onUpdateUser && (
-        <EditProfileModal 
-            user={user} 
-            onSave={(updatedUser) => {
-                onUpdateUser(updatedUser);
-                setIsEditProfileOpen(false);
-            }} 
-            onClose={() => setIsEditProfileOpen(false)} 
-        />
+        <EditProfileModal user={user} onSave={(updatedUser) => { onUpdateUser(updatedUser); setIsEditProfileOpen(false); }} onClose={() => setIsEditProfileOpen(false)} />
     )}
     {selectedPost && (
-        <PostDetailModal
-            post={selectedPost}
-            currentUser={currentUser}
-            onClose={handleClosePost}
-            onToggleLike={onToggleLike}
-            onAddComment={onAddComment}
-            onOpenLikesModal={onOpenLikesModal}
-            onEdit={onEditPost}
-            onDelete={(postId) => {
-                onDeletePost(postId);
-                handleClosePost();
-            }}
-            onNavigate={handleNavigate}
-            hasNext={hasNext}
-            hasPrevious={hasPrevious}
-        />
+        <PostDetailModal post={selectedPost} currentUser={currentUser} onClose={handleClosePost} onToggleLike={onToggleLike} onAddComment={onAddComment} onOpenLikesModal={onOpenLikesModal} onEdit={onEditPost} onDelete={(postId) => { onDeletePost(postId); handleClosePost(); }} onNavigate={handleNavigate} hasNext={hasNext} hasPrevious={hasPrevious} />
     )}
     </>
   );

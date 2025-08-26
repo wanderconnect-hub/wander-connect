@@ -3,7 +3,8 @@ import { PhotoIcon, XMarkIcon } from '../constants';
 import type { Post, User } from '../types';
 
 interface PostUploaderProps {
-  onPost: (newPost: Post) => void;
+  // This function will be called to refresh the post list
+  onPost: () => void; 
   currentUser: User;
 }
 
@@ -65,8 +66,12 @@ const PostUploader: React.FC<PostUploaderProps> = ({ onPost, currentUser }) => {
         throw new Error(errorData.error || 'Failed to save post.');
       }
 
-      alert('Post created successfully!');
-      
+      // --- THIS IS THE KEY CHANGE ---
+      // After the post is saved successfully, call the onPost function.
+      // This tells the parent page to refresh its list of posts.
+      onPost();
+
+      // Finally, reset the form for the next post.
       resetForm();
 
     } catch (error) {
