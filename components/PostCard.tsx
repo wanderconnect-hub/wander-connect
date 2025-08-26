@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import type { Post, User, Comment } from '../types';
@@ -163,11 +162,12 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit, currentUser, onToggle
             </button>
         }
         
-        {/* Caption */}
-        {post.caption && (
+        {/* --- THIS IS THE FIX --- */}
+        {/* Changed 'post.caption' to 'post.content' to match the API data */}
+        {post.content && (
            <p className="text-sm">
              <Link to={`/profile/${post.user.id}`} className="font-bold mr-2 hover:underline">{post.user.name}</Link>
-             {post.caption}
+             {post.content}
            </p>
         )}
         
