@@ -1,21 +1,19 @@
-// File: /api/posts.js
+// File: /api/posts.js - FINAL CORRECTED VERSION
 
-// Use 'import' instead of 'require'
 import { sql } from '@vercel/postgres';
 
-// Use 'export default' to make the function discoverable by Vercel
 export default async function handler(req, res) {
   // --- GET all posts ---
   if (req.method === 'GET') {
     try {
-      // This query assumes your table has 'author_name', 'content', and 'created_at'
       const { rows: posts } = await sql`SELECT * FROM posts ORDER BY created_at DESC;`;
-      
       const formattedPosts = posts.map(p => ({
         id: p.id,
         user: { name: p.author_name, avatarUrl: `https://api.dicebear.com/8.x/adventurer/svg?seed=${p.author_name}` },
         content: p.content,
         timestamp: p.created_at,
+        mediaUrl: p.media_url,
+        mediaType: p.media_type,
         likedByUserIds: [],
         comments: [],
       }));
@@ -28,13 +26,19 @@ export default async function handler(req, res) {
   // --- SAVE a new post ---
   if (req.method === 'POST') {
     try {
-      const { content, author_name } = req.body;
-      if (!content || !author_name) { 
-        return res.status(400).json({ error: 'Content and author name are required.' }); 
+      const { content, author_name, mediaUrl, mediaType } = req.body;
+
+      // --- NEW VALIDATION LOGIC ---
+      // A post is invalid if there is no author, OR if there is NEITHER text content NOR a media URL.
+      if (!author_name || (!content && !mediaUrl)) {
+        return res.status(400).json({ error: 'A post must have text content or an image/video.' });
       }
       
-      // This query assumes your table has 'content' and 'author_name' columns
-      await sql`INSERT INTO posts (content, author_name) VALUES (${content}, ${author_name});`;
+      // The INSERT query is now safe because the 'content' column can be null.
+      await sql`
+        INSERT INTO posts (content, author_name, media_url, media_type) 
+        VALUES (${content || null}, ${author_name}, ${mediaUrl || null}, ${mediaType || null});
+      `;
       
       return res.status(201).json({ message: 'Post created successfully.' });
     } catch (error) {
@@ -42,7 +46,6 @@ export default async function handler(req, res) {
     }
   }
 
-  // If the method is not GET or POST, return an error
   res.setHeader('Allow', ['GET', 'POST']);
   return res.status(405).end(`Method ${req.method} Not Allowed`);
 };
