@@ -65,11 +65,22 @@ const App: React.FC = () => {
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingPosts, setIsLoadingPosts] = useState(false);
   
+  const handleLogout = () => {
+      localStorage.removeItem('authToken');
+      setCurrentUser(null);
+      setPosts([]);
+      setAllUsers([]);
+  };
+
   const fetchUsers = async () => {
       const token = localStorage.getItem('authToken');
       if (!token) return;
       try {
           const res = await fetch('/api/users', { headers: { 'Authorization': `Bearer ${token}` } });
+          if (res.status === 401) {
+              handleLogout();
+              return;
+          }
           if (!res.ok) throw new Error('Failed to fetch users');
           const users = await res.json();
           setAllUsers(users);
@@ -86,6 +97,11 @@ const App: React.FC = () => {
       const response = await fetch(`/api/posts?page=${pageNum}&limit=10`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
+      if (response.status === 401) {
+          handleLogout();
+          setIsLoadingPosts(false);
+          return;
+      }
       if (!response.ok) throw new Error('Failed to fetch posts');
       const data = await response.json();
       
@@ -114,14 +130,18 @@ const App: React.FC = () => {
     const token = localStorage.getItem('authToken');
     if (token) {
       try {
-        const decoded: { userId: number; name: string; email: string; } = jwtDecode(token);
+        const decoded: { userId: number; name: string; email: string; exp: number } = jwtDecode(token);
+        if (decoded.exp * 1000 < Date.now()) {
+            handleLogout();
+            return;
+        }
         const user: User = { id: decoded.userId, name: decoded.name, email: decoded.email, avatarUrl: `https://api.dicebear.com/8.x/adventurer/svg?seed=${decoded.name}`, profileComplete: true, bio: '', coverPhotoUrl: '', interests: [], travelStyle: [], miles: 0, partners: 0, placesCount: 0, trips: 0, followingIds: [], followerIds: [], followRequestIds: [] };
         setCurrentUser(user);
         fetchPosts(1);
         fetchUsers();
       } catch (error) { 
         console.error("Invalid token:", error); 
-        localStorage.removeItem('authToken'); 
+        handleLogout();
       }
     }
   }, []);
@@ -133,13 +153,6 @@ const App: React.FC = () => {
     setCurrentUser(user);
     handleRefreshPosts();
     fetchUsers();
-  };
-  
-  const handleLogout = () => {
-      localStorage.removeItem('authToken');
-      setCurrentUser(null);
-      setPosts([]);
-      setAllUsers([]);
   };
   
   const handleAccountSetupComplete = (completedUser: User) => {};
@@ -156,6 +169,7 @@ const App: React.FC = () => {
         },
         body: JSON.stringify({ id: updatedPost.id, content: updatedPost.content }),
       });
+      if (response.status === 401) { handleLogout(); return; }
       if (!response.ok) {
         throw new Error('Failed to update post on server');
       }
@@ -178,6 +192,7 @@ const App: React.FC = () => {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` },
       });
+      if (response.status === 401) { handleLogout(); return; }
       if (!response.ok) {
         throw new Error('Failed to delete post on server');
       }
@@ -214,6 +229,7 @@ const App: React.FC = () => {
             },
             body: JSON.stringify({ postId })
         });
+        if (response.status === 401) { handleLogout(); return; }
         if (!response.ok) throw new Error('Failed to update like status.');
     } catch (error) {
         console.error("Error toggling like:", error);
@@ -235,7 +251,7 @@ const App: React.FC = () => {
             },
             body: JSON.stringify({ postId, text: commentText })
         });
-
+        if (response.status === 401) { handleLogout(); return; }
         if (!response.ok) throw new Error('Failed to post comment.');
         
         const newComment: Comment = await response.json();
@@ -262,35 +278,116 @@ const App: React.FC = () => {
   const handleAddConnection = (partnerId: number) => {};
 
   if (!currentUser) { return <AuthPage onLogin={handleLogin} />; }
-  // if (!currentUser.profileComplete) { return <AccountSetupPage user={currentUser} onSetupComplete={handleAccountSetupComplete} />; }
-
+  // FIX: Complete the App component with a return statement and router structure.
+  if (!currentUser.profileComplete) { return <AccountSetupPage user={currentUser} onSetupComplete={handleAccountSetupComplete} />; }
+  
   return (
     <HashRouter>
-      <div className="min-h-screen bg-stone-100/50 font-sans">
-        <main className="pb-24">
-            <Routes>
-                <Route path="/" element={ <HomePage posts={posts} refreshPosts={handleRefreshPosts} openEditModal={openEditModal} currentUser={currentUser} onToggleLike={handleToggleLike} onAddComment={handleAddComment} onOpenLikesModal={openLikesModal} onDeletePost={deletePost} isLoading={isLoadingPosts} hasMore={hasMore} loadMore={loadMorePosts} /> } />
-                <Route path="/matchmaking" element={<MatchmakingForm currentUser={currentUser} allUsers={allUsers} onAddConnection={handleAddConnection} />} />
-                <Route path="/explore" element={<DestinationExplorer />} />
-                <Route path="/profile/:userId?" element={ <ProfilePage currentUser={currentUser} allUsers={allUsers} posts={posts} onUpdateUser={updateUser} onLogout={handleLogout} onToggleLike={handleToggleLike} onAddComment={handleAddComment} onOpenLikesModal={openLikesModal} onEditPost={openEditModal} onDeletePost={deletePost} refreshPosts={handleRefreshPosts} />} />
-                <Route path="/settings" element={<SettingsPage settings={settings} onUpdateSettings={handleUpdateSettings} />} />
-            </Routes>
+      <div className="flex flex-col min-h-screen bg-stone-50 font-sans">
+        <main className="flex-grow pb-20">
+          <Routes>
+            <Route path="/" element={
+              <HomePage 
+                posts={posts} 
+                refreshPosts={handleRefreshPosts}
+                openEditModal={openEditModal} 
+                currentUser={currentUser} 
+                onToggleLike={handleToggleLike} 
+                onAddComment={handleAddComment}
+                onOpenLikesModal={openLikesModal}
+                onDeletePost={deletePost}
+                isLoading={isLoadingPosts}
+                hasMore={hasMore}
+                loadMore={loadMorePosts}
+              />
+            } />
+            <Route path="/matchmaking" element={
+              <MatchmakingForm 
+                currentUser={currentUser} 
+                allUsers={allUsers} 
+                onAddConnection={handleAddConnection} 
+              />
+            } />
+            <Route path="/explore" element={<DestinationExplorer />} />
+            <Route path="/profile/:userId" element={
+              <ProfilePage 
+                  currentUser={currentUser} 
+                  allUsers={allUsers}
+                  posts={posts} 
+                  onUpdateUser={updateUser}
+                  onLogout={handleLogout}
+                  onToggleLike={handleToggleLike}
+                  onAddComment={handleAddComment}
+                  onOpenLikesModal={openLikesModal}
+                  onEditPost={openEditModal}
+                  onDeletePost={deletePost}
+                  refreshPosts={handleRefreshPosts}
+              />
+            } />
+            <Route path="/profile" element={
+              <ProfilePage 
+                  currentUser={currentUser} 
+                  allUsers={allUsers}
+                  posts={posts} 
+                  onUpdateUser={updateUser}
+                  onLogout={handleLogout}
+                  onToggleLike={handleToggleLike}
+                  onAddComment={handleAddComment}
+                  onOpenLikesModal={openLikesModal}
+                  onEditPost={openEditModal}
+                  onDeletePost={deletePost}
+                  refreshPosts={handleRefreshPosts}
+              />
+            } />
+            <Route path="/settings" element={
+              <SettingsPage 
+                settings={settings}
+                onUpdateSettings={handleUpdateSettings}
+              />
+            } />
+          </Routes>
         </main>
+  
+        {editingPost && (
+          <EditPostModal 
+            post={editingPost} 
+            onSave={updatePost}
+            onClose={closeEditModal} 
+          />
+        )}
         
-        {editingPost && <EditPostModal post={editingPost} onSave={updatePost} onClose={closeEditModal} />}
-        {viewingLikesOfPost && <LikesModal post={viewingLikesOfPost} allUsers={allUsers} onClose={closeLikesModal} />}
-
-        <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-stone-200 shadow-lg">
-            <div className="flex justify-around max-w-2xl mx-auto">
-                <NavLink to="/" className={({ isActive }) => `flex flex-col items-center justify-center p-3 text-sm transition-colors duration-200 ${isActive ? 'text-cyan-600' : 'text-stone-500 hover:text-cyan-500'}`}> <HomeIcon className="w-6 h-6 mb-1" /> <span>Home</span> </NavLink>
-                <NavLink to="/matchmaking" className={({ isActive }) => `flex flex-col items-center justify-center p-3 text-sm transition-colors duration-200 ${isActive ? 'text-cyan-600' : 'text-stone-500 hover:text-cyan-500'}`}> <UsersIcon className="w-6 h-6 mb-1" /> <span>Match</span> </NavLink>
-                <NavLink to="/explore" className={({ isActive }) => `flex flex-col items-center justify-center p-3 text-sm transition-colors duration-200 ${isActive ? 'text-cyan-600' : 'text-stone-500 hover:text-cyan-500'}`}> <GlobeAltIcon className="w-6 h-6 mb-1" /> <span>Explore</span> </NavLink>
-                <NavLink to="/profile" className={({ isActive }) => `flex flex-col items-center justify-center p-3 text-sm transition-colors duration-200 ${isActive ? 'text-cyan-600' : 'text-stone-500 hover:text-cyan-500'}`}> <UserCircleIcon className="w-6 h-6 mb-1" /> <span>Profile</span> </NavLink>
-            </div>
+        {viewingLikesOfPost && (
+          <LikesModal 
+            post={viewingLikesOfPost} 
+            allUsers={allUsers} 
+            onClose={closeLikesModal} 
+          />
+        )}
+  
+        <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-stone-200/80 shadow-t-sm z-40">
+          <div className="max-w-2xl mx-auto flex justify-around items-center h-16">
+            <NavLink to="/" className={({ isActive }) => `flex flex-col items-center justify-center gap-1 w-full transition-colors ${isActive ? 'text-cyan-600' : 'text-stone-500 hover:text-cyan-600'}`}>
+              <HomeIcon className="w-6 h-6" />
+              <span className="text-xs font-medium">Home</span>
+            </NavLink>
+            <NavLink to="/matchmaking" className={({ isActive }) => `flex flex-col items-center justify-center gap-1 w-full transition-colors ${isActive ? 'text-cyan-600' : 'text-stone-500 hover:text-cyan-600'}`}>
+              <UsersIcon className="w-6 h-6" />
+              <span className="text-xs font-medium">Match</span>
+            </NavLink>
+            <NavLink to="/explore" className={({ isActive }) => `flex flex-col items-center justify-center gap-1 w-full transition-colors ${isActive ? 'text-cyan-600' : 'text-stone-500 hover:text-cyan-600'}`}>
+              <GlobeAltIcon className="w-6 h-6" />
+              <span className="text-xs font-medium">Explore</span>
+            </NavLink>
+            <NavLink to="/profile" className={({ isActive }) => `flex flex-col items-center justify-center gap-1 w-full transition-colors ${isActive ? 'text-cyan-600' : 'text-stone-500 hover:text-cyan-600'}`}>
+              <UserCircleIcon className="w-6 h-6" />
+              <span className="text-xs font-medium">Profile</span>
+            </NavLink>
+          </div>
         </nav>
       </div>
     </HashRouter>
   );
 };
 
+// FIX: Add default export to make the component available for import in index.tsx.
 export default App;
