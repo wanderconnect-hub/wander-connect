@@ -1,7 +1,33 @@
 // File: /api/upload.js
 import { put } from '@vercel/blob';
+import jwt from 'jsonwebtoken';
+
+const JWT_SECRET = process.env.JWT_SECRET;
+
+const verifyToken = (req) => {
+  if (!JWT_SECRET) {
+    console.error("JWT_SECRET is not configured on the server.");
+    return null;
+  }
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return null;
+  }
+  const token = authHeader.split(' ')[1];
+  try {
+    return jwt.verify(token, JWT_SECRET);
+  } catch (error) {
+    console.error("JWT verification failed:", error.message);
+    return null;
+  }
+};
 
 export default async function handler(req, res) {
+  const userPayload = verifyToken(req);
+  if (!userPayload) {
+    return res.status(401).json({ message: 'Unauthorized: Invalid or missing token.' });
+  }
+
   // This function only accepts POST requests for file uploads
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method Not Allowed' });
