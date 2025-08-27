@@ -129,7 +129,8 @@ const App: React.FC = () => {
   };
   
   const handleRefreshPosts = () => {
-    setPosts([]);
+    // No longer clearing posts here to prevent a blank screen.
+    // fetchPosts(1) will replace the list with the latest data.
     fetchPosts(1);
   };
   
