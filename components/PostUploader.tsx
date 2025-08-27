@@ -1,14 +1,17 @@
-// File: components/PostUploader.tsx - FINAL CORRECTED VERSION
+
+// File: components/PostUploader.tsx - FINAL SECURE VERSION
 import React, { useState } from 'react';
 import { PhotoIcon, XMarkIcon } from '../constants';
 import type { Post, User } from '../types';
+import { fetchWithAuth } from '../services/apiService';
 
 interface PostUploaderProps {
   onPost: () => void;
   currentUser: User;
+  onLogout: () => void;
 }
 
-const PostUploader: React.FC<PostUploaderProps> = ({ onPost, currentUser }) => {
+const PostUploader: React.FC<PostUploaderProps> = ({ onPost, currentUser, onLogout }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [caption, setCaption] = useState('');
   const [file, setFile] = useState<File | null>(null);
@@ -44,37 +47,44 @@ const PostUploader: React.FC<PostUploaderProps> = ({ onPost, currentUser }) => {
 
     setIsUploading(true);
     let uploadedMediaUrl: string | null = null;
+    
+    // Quick check for token before attempting to upload.
+    // fetchWithAuth will also check, but this is a faster failure.
+    if (!localStorage.getItem('authToken')) {
+        onLogout();
+        return;
+    }
 
     try {
       // Step 1: If a file exists, upload it to Vercel Blob first.
       if (file) {
-        const response = await fetch(
+        const response = await fetchWithAuth(
           `/api/upload?filename=${encodeURIComponent(file.name)}`,
           {
             method: 'POST',
             body: file,
-          }
+          },
+          true // Mark this as a file upload
         );
-
+        
         if (!response.ok) {
-          throw new Error('File upload failed.');
+          const errorData = await response.json().catch(() => ({ message: 'File upload failed.'}));
+          throw new Error(errorData.message || 'File upload failed.');
         }
         
         const blobResult = await response.json();
         uploadedMediaUrl = blobResult.url;
       }
 
-      // Step 2: Now, create the post with the text and the new media URL (if it exists).
+      // Step 2: Create the post with text and media URL.
       const postPayload = {
         content: trimmedCaption,
-        author_name: currentUser.name,
         mediaUrl: uploadedMediaUrl,
         mediaType: mediaType,
       };
 
-      const postResponse = await fetch('/api/posts', {
+      const postResponse = await fetchWithAuth('/api/posts', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(postPayload),
       });
 
@@ -88,9 +98,15 @@ const PostUploader: React.FC<PostUploaderProps> = ({ onPost, currentUser }) => {
       resetForm();
 
     } catch (error) {
-      console.error('Error creating post:', error);
-      alert(`Error: ${error instanceof Error ? error.message : 'An unknown error occurred.'}`);
-      setIsUploading(false); // Make sure to re-enable the form on failure
+      // The fetchWithAuth service handles 401s by reloading.
+      // This catch block will only handle other errors (e.g., 500 server error, network issues).
+      // The "Session expired" error from fetchWithAuth's rejection will be caught here, but since the
+      // page is already reloading, showing an alert is unnecessary and may not even be seen.
+      if (!(error as Error).message.includes('Session expired')) {
+          console.error('Error creating post:', error);
+          alert(`Error: ${error instanceof Error ? error.message : 'An unknown error occurred.'}`);
+      }
+      setIsUploading(false); // Re-enable the form on failure.
     }
   };
   
