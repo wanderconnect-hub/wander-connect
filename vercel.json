@@ -1,12 +1,13 @@
 {
   "rewrites": [
-    {
-      "source": "/api/:path*",
-      "destination": "/api/:path*"
-    },
-    {
-      "source": "/((?!api/).*)",
-      "destination": "/index.html"
-    }
+    { "source": "/api/auth", "destination": "/api/auth.js" },
+    { "source": "/api/comments", "destination": "/api/comments.js" },
+    { "source": "/api/findMatches", "destination": "/api/findMatches.js" },
+    { "source": "/api/generate", "destination": "/api/generate.js" },
+    { "source": "/api/likes", "destination": "/api/likes.js" },
+    { "source": "/api/posts", "destination": "/api/posts.js" },
+    { "source": "/api/upload", "destination": "/api/upload.js" },
+    { "source": "/api/users", "destination": "/api/users.js" },
+    { "source": "/(.*)", "destination": "/" }
   ]
 }

@@ -132,7 +132,13 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit, currentUser, onToggle
       {/* Post Content and Actions */}
       <div className="p-4">
         <div className="flex items-center gap-4 mb-2">
-            <button onClick={() => onToggleLike(post.id)} className="flex items-center gap-1.5 group" aria-label="Like post"><HeartIcon className="w-6 h-6 text-stone-600 transition-transform group-hover:scale-110" /></button>
+            <button onClick={() => onToggleLike(post.id)} className="flex items-center gap-1.5 group" aria-label="Like post">
+                {isLiked ? (
+                    <HeartIconSolid className="w-6 h-6 text-red-500 transition-transform group-hover:scale-110" />
+                ) : (
+                    <HeartIcon className="w-6 h-6 text-stone-600 transition-transform group-hover:scale-110" />
+                )}
+            </button>
             <button onClick={handleCommentClick} className="flex items-center gap-1.5 group" aria-label="Comment on post"><ChatBubbleLeftEllipsisIcon className="w-6 h-6 text-stone-600 transition-transform group-hover:scale-110" /></button>
         </div>
         
@@ -161,8 +167,33 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit, currentUser, onToggle
       {/* Comments Section */}
       {showComments && (
           <div className="border-t border-stone-200 px-4 pt-2 pb-1">
-            <div ref={commentsContainerRef} className="space-y-2 max-h-48 overflow-y-auto mb-2">{/* ... */}</div>
-            <form onSubmit={handleCommentSubmit} className="flex items-center gap-2 py-2">{/* ... */}</form>
+            <div ref={commentsContainerRef} className="space-y-2 max-h-48 overflow-y-auto mb-2">
+                {post.comments.map(comment => (
+                    <div key={comment.id} className="text-sm flex items-start gap-2">
+                        <Link to={`/profile/${comment.user.id}`} className="flex-shrink-0">
+                            <img src={comment.user.avatarUrl} alt={comment.user.name} className="w-7 h-7 rounded-full object-cover"/>
+                        </Link>
+                        <p className="flex-grow">
+                            <Link to={`/profile/${comment.user.id}`} className="font-bold mr-1.5 hover:underline">{comment.user.name}</Link>
+                            {comment.text}
+                        </p>
+                    </div>
+                ))}
+            </div>
+            <form onSubmit={handleCommentSubmit} className="flex items-center gap-2 py-2 border-t border-stone-100">
+                <img src={currentUser.avatarUrl} alt={currentUser.name} className="w-8 h-8 rounded-full object-cover" />
+                <input
+                    ref={commentInputRef}
+                    type="text"
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    placeholder="Add a comment..."
+                    className="flex-1 bg-stone-100 border-none rounded-full px-4 py-1.5 text-sm focus:ring-2 focus:ring-cyan-500"
+                />
+                <button type="submit" disabled={!newComment.trim()} className="text-sm font-semibold text-cyan-600 hover:text-cyan-800 disabled:text-stone-400 disabled:cursor-not-allowed">
+                    Post
+                </button>
+            </form>
           </div>
       )}
     </div>
