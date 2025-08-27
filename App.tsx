@@ -83,8 +83,18 @@ const App: React.FC = () => {
           }
           if (!res.ok) throw new Error('Failed to fetch users');
           const users = await res.json();
-          // Defensive check to ensure we always set an array
-          setAllUsers(Array.isArray(users) ? users : []);
+          const validUsers = Array.isArray(users) ? users : [];
+          setAllUsers(validUsers);
+          
+          // After fetching all users, find the full data for the current
+          // user and update the currentUser state. This ensures all components
+          // have the complete and up-to-date user profile.
+          if (currentUser) {
+              const fullCurrentUser = validUsers.find(u => u.id === currentUser.id);
+              if (fullCurrentUser) {
+                  setCurrentUser(fullCurrentUser);
+              }
+          }
       } catch (error) {
           console.error("Error fetching users:", error);
           setAllUsers([]); // Reset to empty on error
