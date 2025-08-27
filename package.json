@@ -24,7 +24,7 @@
     "vite": "^6.2.0"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^1.0.0-alpha.13",
+    "@tailwindcss/vite": "^1.0.0-alpha.14",
     "tailwindcss": "^4.1.12"
   }
 }
