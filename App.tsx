@@ -83,9 +83,11 @@ const App: React.FC = () => {
           }
           if (!res.ok) throw new Error('Failed to fetch users');
           const users = await res.json();
-          setAllUsers(users);
+          // Defensive check to ensure we always set an array
+          setAllUsers(Array.isArray(users) ? users : []);
       } catch (error) {
           console.error("Error fetching users:", error);
+          setAllUsers([]); // Reset to empty on error
       }
   };
 
@@ -105,9 +107,14 @@ const App: React.FC = () => {
       if (!response.ok) throw new Error('Failed to fetch posts');
       const data = await response.json();
       
-      setPosts(prev => pageNum === 1 ? data.posts : [...prev, ...data.posts]);
-      setHasMore(data.currentPage < data.totalPages);
-      setPage(pageNum);
+      // Defensive check: Ensure data.posts is an array before setting state.
+      const fetchedPosts = Array.isArray(data?.posts) ? data.posts : [];
+      const currentPage = data?.currentPage ?? pageNum;
+      const totalPages = data?.totalPages ?? currentPage;
+
+      setPosts(prev => pageNum === 1 ? fetchedPosts : [...prev, ...fetchedPosts]);
+      setHasMore(currentPage < totalPages);
+      setPage(currentPage);
     } catch (error) {
       console.error("Error fetching posts:", error);
     } finally {
