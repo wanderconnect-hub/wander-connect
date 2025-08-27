@@ -21,5 +21,11 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["components", "services", "types.ts", "constants.tsx", "App.tsx", "index.tsx", "vite-env.d.ts", "vite.config.ts"]
+  "include": [
+    "**/*.ts",
+    "**/*.tsx"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }
