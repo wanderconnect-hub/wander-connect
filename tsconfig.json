@@ -13,7 +13,6 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
-    "allowSyntheticDefaultImports": true,
 
     /* Linting */
     "strict": true,
@@ -21,11 +20,6 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": [
-    "**/*.ts",
-    "**/*.tsx"
-  ],
-  "exclude": [
-    "node_modules"
-  ]
+  "include": ["components", "services", "types.ts", "constants.tsx", "App.tsx", "index.tsx"],
+  "references": [{ "path": "./tsconfig.node.json" }]
 }
