@@ -411,12 +411,12 @@ const App: React.FC = () => {
             >
               <UserCircleIcon className="w-6 h-6" />
               <span className="text-xs font-medium">Profile</span>
-            </NavLink>
-          </div>
-        </nav>
-      </div>
-    </HashRouter>
-  );
-};
-
-export default App;
+                          </NavLink>
+            </div>
+          </nav>
+        </div>
+      </HashRouter>
+    );
+  };
+  
+  export default App;
