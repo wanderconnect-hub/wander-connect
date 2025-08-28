@@ -398,12 +398,21 @@ const App: React.FC = () => {
               <UsersIcon className="w-6 h-6" />
               <span className="text-xs font-medium">Match</span>
             </NavLink>
-            <NavLink to="/explore" className={({ isActive }) => `flex flex-col items-center justify-center gap-1 w-full transition-colors ${isActive ? 'text-cyan-600' : 'text-stone-500 hover:text-cyan-600'}`}>
+                        <NavLink 
+              to="/explore" 
+              className={({ isActive }) => 
+                `flex flex-col items-center justify-center gap-1 w-full transition-colors ${
+                  isActive ? 'text-cyan-600' : 'text-stone-500 hover:text-cyan-600'
+                }`
+              }
+            >
               <GlobeAltIcon className="w-6 h-6" />
               <span className="text-xs font-medium">Explore</span>
-                      <NavLink
-              to="/profile"
-              className={({ isActive }) =>
+            </NavLink>
+
+            <NavLink 
+              to="/profile" 
+              className={({ isActive }) => 
                 `flex flex-col items-center justify-center gap-1 w-full transition-colors ${
                   isActive ? 'text-cyan-600' : 'text-stone-500 hover:text-cyan-600'
                 }`
@@ -411,12 +420,13 @@ const App: React.FC = () => {
             >
               <UserCircleIcon className="w-6 h-6" />
               <span className="text-xs font-medium">Profile</span>
-                          </NavLink>
-            </div>
-          </nav>
-        </div>
-      </HashRouter>
-    );
-  };
-  
-  export default App;
+            </NavLink>
+          </div>
+        </nav>
+      </div>
+    </HashRouter>
+  );
+};
+
+export default App;
+
