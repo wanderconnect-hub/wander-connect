@@ -14,7 +14,7 @@ import AccountSetupPage from './components/auth/AccountSetupPage';
 import LikesModal from './components/LikesModal';
 import PostCard from './components/PostCard';
 import { jwtDecode } from 'jwt-decode';
-import { fetchWithAuth } from './services/apiService';
+import { fetchWithAuth } from './services/apiServices';
 
 const HomePage: React.FC<{ 
     posts: Post[]; 
