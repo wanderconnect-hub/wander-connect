@@ -14,6 +14,7 @@ import AccountSetupPage from './components/auth/AccountSetupPage';
 import LikesModal from './components/LikesModal';
 import PostCard from './components/PostCard';
 import { jwtDecode } from 'jwt-decode';
+import { fetchWithAuth } from './services/apiService';
 
 const HomePage: React.FC<{ 
     posts: Post[]; 
@@ -27,12 +28,22 @@ const HomePage: React.FC<{
     isLoading: boolean;
     hasMore: boolean;
     loadMore: () => void;
-}> = ({ posts, refreshPosts, openEditModal, currentUser, onToggleLike, onAddComment, onOpenLikesModal, onDeletePost, isLoading, hasMore, loadMore }) => (
+    onLogout: () => void;
+}> = ({ posts, refreshPosts, openEditModal, currentUser, onToggleLike, onAddComment, onOpenLikesModal, onDeletePost, isLoading, hasMore, loadMore, onLogout }) => (
     <div className="max-w-2xl mx-auto py-8 px-4">
-        <PostUploader onPost={refreshPosts} currentUser={currentUser} />
+        <PostUploader onPost={refreshPosts} currentUser={currentUser} onLogout={onLogout} />
         <div className="mt-8 space-y-6">
             {posts.map(post => (
-                <PostCard key={post.id} post={post} onEdit={openEditModal} currentUser={currentUser} onToggleLike={onToggleLike} onAddComment={onAddComment} onOpenLikesModal={onOpenLikesModal} onDelete={onDeletePost} />
+                <PostCard 
+                    key={post.id} 
+                    post={post} 
+                    onEdit={openEditModal} 
+                    currentUser={currentUser} 
+                    onToggleLike={onToggleLike} 
+                    onAddComment={onAddComment} 
+                    onOpenLikesModal={onOpenLikesModal} 
+                    onDelete={onDeletePost} 
+                />
             ))}
         </div>
         <div className="text-center mt-8 py-4">
@@ -51,7 +62,46 @@ const HomePage: React.FC<{
     </div>
 );
 
-const ProfilePage: React.FC<{ currentUser: User; allUsers: User[]; posts: Post[]; onUpdateUser: (updatedUser: User) => void; onLogout: () => void; onToggleLike: (postId: number) => void; onAddComment: (postId: number, commentText: string) => void; onOpenLikesModal: (post: Post) => void; onEditPost: (post: Post) => void; onDeletePost: (postId: number) => void; refreshPosts: () => void; }> = ({ currentUser, allUsers, posts, onUpdateUser, onLogout, onToggleLike, onAddComment, onOpenLikesModal, onEditPost, onDeletePost, refreshPosts }) => { const { userId } = useParams<{ userId: string }>(); const userToShow = userId ? allUsers.find(u => u.id === parseInt(userId, 10)) : currentUser; if (!userToShow) { return <div className="text-center p-8">User not found.</div>; } const isCurrentUserProfile = userToShow.id === currentUser.id; return ( <UserProfile user={userToShow} currentUser={currentUser} isCurrentUserProfile={isCurrentUserProfile} onUpdateUser={isCurrentUserProfile ? onUpdateUser : undefined} onLogout={isCurrentUserProfile ? onLogout : undefined} posts={posts} onToggleLike={onToggleLike} onAddComment={onAddComment} onOpenLikesModal={onOpenLikesModal} onEditPost={onEditPost} onDeletePost={onDeletePost} onNewPost={isCurrentUserProfile ? refreshPosts : undefined} /> ); };
+const ProfilePage: React.FC<{ 
+  currentUser: User; 
+  allUsers: User[]; 
+  posts: Post[]; 
+  onUpdateUser: (updatedUser: User) => void; 
+  onLogout: () => void; 
+  onToggleLike: (postId: number) => void; 
+  onAddComment: (postId: number, commentText: string) => void; 
+  onOpenLikesModal: (post: Post) => void; 
+  onEditPost: (post: Post) => void; 
+  onDeletePost: (postId: number) => void; 
+  refreshPosts: () => void; 
+}> = ({ currentUser, allUsers, posts, onUpdateUser, onLogout, onToggleLike, onAddComment, onOpenLikesModal, onEditPost, onDeletePost, refreshPosts }) => { 
+  
+  const { userId } = useParams<{ userId: string }>(); 
+  const userToShow = userId ? allUsers.find(u => u.id === parseInt(userId, 10)) : currentUser; 
+  
+  if (!userToShow) { 
+    return <div className="text-center p-8">User not found.</div>; 
+  } 
+  
+  const isCurrentUserProfile = userToShow.id === currentUser.id; 
+  
+  return ( 
+    <UserProfile 
+      user={userToShow} 
+      currentUser={currentUser} 
+      isCurrentUserProfile={isCurrentUserProfile} 
+      onUpdateUser={isCurrentUserProfile ? onUpdateUser : undefined} 
+      onLogout={isCurrentUserProfile ? onLogout : undefined} 
+      posts={posts} 
+      onToggleLike={onToggleLike} 
+      onAddComment={onAddComment} 
+      onOpenLikesModal={onOpenLikesModal} 
+      onEditPost={onEditPost} 
+      onDeletePost={onDeletePost} 
+      onNewPost={isCurrentUserProfile ? refreshPosts : undefined} 
+    /> 
+  ); 
+};
 
 const App: React.FC = () => {
   const [posts, setPosts] = useState<Post[]>([]);
@@ -73,22 +123,13 @@ const App: React.FC = () => {
   };
 
   const fetchUsers = async () => {
-      const token = localStorage.getItem('authToken');
-      if (!token) return;
       try {
-          const res = await fetch('/api/users', { headers: { 'Authorization': `Bearer ${token}` } });
-          if (res.status === 401) {
-              handleLogout();
-              return;
-          }
+          const res = await fetchWithAuth('/api/users');
           if (!res.ok) throw new Error('Failed to fetch users');
           const users = await res.json();
           const validUsers = Array.isArray(users) ? users : [];
           setAllUsers(validUsers);
           
-          // After fetching all users, find the full data for the current
-          // user and update the currentUser state. This ensures all components
-          // have the complete and up-to-date user profile.
           if (currentUser) {
               const fullCurrentUser = validUsers.find(u => u.id === currentUser.id);
               if (fullCurrentUser) {
@@ -97,27 +138,19 @@ const App: React.FC = () => {
           }
       } catch (error) {
           console.error("Error fetching users:", error);
-          setAllUsers([]); // Reset to empty on error
+          if ((error as Error).message.includes('Session expired')) return;
+          setAllUsers([]); 
       }
   };
 
   const fetchPosts = async (pageNum = 1) => {
     if (isLoadingPosts) return;
     setIsLoadingPosts(true);
-    const token = localStorage.getItem('authToken');
     try {
-      const response = await fetch(`/api/posts?page=${pageNum}&limit=10`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (response.status === 401) {
-          handleLogout();
-          setIsLoadingPosts(false);
-          return;
-      }
+      const response = await fetchWithAuth(`/api/posts?page=${pageNum}&limit=10`);
       if (!response.ok) throw new Error('Failed to fetch posts');
       const data = await response.json();
       
-      // Defensive check: Ensure data.posts is an array before setting state.
       const fetchedPosts = Array.isArray(data?.posts) ? data.posts : [];
       const currentPage = data?.currentPage ?? pageNum;
       const totalPages = data?.totalPages ?? currentPage;
@@ -139,8 +172,6 @@ const App: React.FC = () => {
   };
   
   const handleRefreshPosts = () => {
-    // No longer clearing posts here to prevent a blank screen.
-    // fetchPosts(1) will replace the list with the latest data.
     fetchPosts(1);
   };
   
@@ -177,17 +208,11 @@ const App: React.FC = () => {
   const handleUpdateSettings = (newSettings: typeof settings) => { setSettings(newSettings); };
   
   const updatePost = async (updatedPost: Post) => {
-    const token = localStorage.getItem('authToken');
     try {
-      const response = await fetch('/api/posts', {
+      const response = await fetchWithAuth('/api/posts', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
         body: JSON.stringify({ id: updatedPost.id, content: updatedPost.content }),
       });
-      if (response.status === 401) { handleLogout(); return; }
       if (!response.ok) {
         throw new Error('Failed to update post on server');
       }
@@ -201,16 +226,11 @@ const App: React.FC = () => {
   };
 
   const deletePost = async (postId: number) => {
-    const token = localStorage.getItem('authToken');
     const originalPosts = posts;
     setPosts(prevPosts => prevPosts.filter(p => p.id !== postId));
 
     try {
-      const response = await fetch(`/api/posts?id=${postId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
-      if (response.status === 401) { handleLogout(); return; }
+      const response = await fetchWithAuth(`/api/posts?id=${postId}`, { method: 'DELETE' });
       if (!response.ok) {
         throw new Error('Failed to delete post on server');
       }
@@ -223,9 +243,7 @@ const App: React.FC = () => {
 
   const handleToggleLike = async (postId: number) => {
     if (!currentUser) return;
-    const token = localStorage.getItem('authToken');
     
-    // Optimistic UI update
     const originalPosts = [...posts];
     setPosts(prevPosts => prevPosts.map(p => {
         if (p.id === postId) {
@@ -239,42 +257,30 @@ const App: React.FC = () => {
     }));
 
     try {
-        const response = await fetch('/api/likes', {
+        const response = await fetchWithAuth('/api/likes', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
             body: JSON.stringify({ postId })
         });
-        if (response.status === 401) { handleLogout(); return; }
         if (!response.ok) throw new Error('Failed to update like status.');
     } catch (error) {
         console.error("Error toggling like:", error);
-        setPosts(originalPosts); // Revert on failure
+        setPosts(originalPosts);
         alert("Could not update like. Please try again.");
     }
   };
 
   const handleAddComment = async (postId: number, commentText: string) => {
     if (!currentUser) return;
-    const token = localStorage.getItem('authToken');
 
     try {
-        const response = await fetch('/api/comments', {
+        const response = await fetchWithAuth('/api/comments', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
             body: JSON.stringify({ postId, text: commentText })
         });
-        if (response.status === 401) { handleLogout(); return; }
         if (!response.ok) throw new Error('Failed to post comment.');
         
         const newComment: Comment = await response.json();
 
-        // Update state with the new comment from the server
         setPosts(prevPosts => prevPosts.map(p => {
             if (p.id === postId) {
                 return { ...p, comments: [...p.comments, newComment] };
@@ -296,7 +302,6 @@ const App: React.FC = () => {
   const handleAddConnection = (partnerId: number) => {};
 
   if (!currentUser) { return <AuthPage onLogin={handleLogin} />; }
-  // FIX: Complete the App component with a return statement and router structure.
   if (!currentUser.profileComplete) { return <AccountSetupPage user={currentUser} onSetupComplete={handleAccountSetupComplete} />; }
   
   return (
@@ -317,6 +322,7 @@ const App: React.FC = () => {
                 isLoading={isLoadingPosts}
                 hasMore={hasMore}
                 loadMore={loadMorePosts}
+                onLogout={handleLogout}
               />
             } />
             <Route path="/matchmaking" element={
@@ -399,13 +405,3 @@ const App: React.FC = () => {
             <NavLink to="/profile" className={({ isActive }) => `flex flex-col items-center justify-center gap-1 w-full transition-colors ${isActive ? 'text-cyan-600' : 'text-stone-500 hover:text-cyan-600'}`}>
               <UserCircleIcon className="w-6 h-6" />
               <span className="text-xs font-medium">Profile</span>
-            </NavLink>
-          </div>
-        </nav>
-      </div>
-    </HashRouter>
-  );
-};
-
-// FIX: Add default export to make the component available for import in index.tsx.
-export default App;
