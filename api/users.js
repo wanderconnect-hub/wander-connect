@@ -4,54 +4,44 @@ import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
-export default async function handler(req, res) {
+const verifyToken = (req) => {
+  if (!JWT_SECRET) return null;
   const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  if (!authHeader?.startsWith('Bearer ')) return null;
+
+  try {
+    return jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
+  } catch {
+    return null;
+  }
+};
+
+export default async function handler(req, res) {
+  const userPayload = verifyToken(req);
+  if (!userPayload?.userId) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
-  
-  const token = authHeader.split(' ')[1];
-  try {
-    if (!JWT_SECRET) {
-        throw new Error("JWT_SECRET is not configured on the server.");
-    }
-    jwt.verify(token, JWT_SECRET);
-  } catch (error) {
-    return res.status(401).json({ error: 'Unauthorized: Invalid token' });
-  }
 
-  if (req.method === 'GET') {
+  // ✅ Update avatar
+  if (req.method === 'PUT') {
     try {
-      const { rows } = await sql`SELECT * FROM users;`;
+      const { avatarUrl } = req.body;
+      if (!avatarUrl) {
+        return res.status(400).json({ error: 'avatarUrl is required.' });
+      }
 
-      // Map DB rows to the expected User contract, providing safe defaults
-      // This makes the API resilient to schema changes (e.g., missing columns)
-      const formattedUsers = rows.map(user => ({
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        bio: user.bio || '',
-        travelStyle: user.travel_style || [],
-        interests: user.interests || [],
-        coverPhotoUrl: user.cover_photo_url || null,
-        avatarUrl: user.avatar_url || `https://api.dicebear.com/8.x/adventurer/svg?seed=${user.name}`,
-        followingIds: user.following_ids || [],
-        followerIds: user.follower_ids || [],
-        followRequestIds: user.follow_request_ids || [],
-        miles: user.miles || 0,
-        partners: user.partners || 0,
-        placesCount: user.places_count || 0,
-        trips: user.trips || 0,
-        profileComplete: user.profile_complete ?? true,
-      }));
+      await sql`
+        UPDATE users 
+        SET avatar_url = ${avatarUrl}
+        WHERE id = ${userPayload.userId};
+      `;
 
-      return res.status(200).json(formattedUsers);
+      return res.status(200).json({ message: 'Avatar updated successfully.' });
     } catch (error) {
-        console.error('Error fetching users:', error);
-      return res.status(500).json({ error: 'Failed to fetch users.', details: error.message });
+      return res.status(500).json({ error: error.message });
     }
   }
 
-  res.setHeader('Allow', ['GET']);
+  res.setHeader('Allow', ['PUT']);
   return res.status(405).end(`Method ${req.method} Not Allowed`);
 }
