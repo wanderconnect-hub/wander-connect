@@ -1,9 +1,8 @@
-
-// File: components/PostUploader.tsx - FINAL SECURE VERSION
+// File: components/PostUploader.tsx - FIXED VERSION
 import React, { useState } from 'react';
 import { PhotoIcon, XMarkIcon } from '../constants';
 import type { Post, User } from '../types';
-import { fetchWithAuth } from '../services/apiService';
+import { fetchWithAuth } from '../services/apiServices'; // ✅ FIXED (plural "apiServices")
 
 interface PostUploaderProps {
   onPost: () => void;
@@ -48,15 +47,12 @@ const PostUploader: React.FC<PostUploaderProps> = ({ onPost, currentUser, onLogo
     setIsUploading(true);
     let uploadedMediaUrl: string | null = null;
     
-    // Quick check for token before attempting to upload.
-    // fetchWithAuth will also check, but this is a faster failure.
     if (!localStorage.getItem('authToken')) {
         onLogout();
         return;
     }
 
     try {
-      // Step 1: If a file exists, upload it to Vercel Blob first.
       if (file) {
         const response = await fetchWithAuth(
           `/api/upload?filename=${encodeURIComponent(file.name)}`,
@@ -64,7 +60,7 @@ const PostUploader: React.FC<PostUploaderProps> = ({ onPost, currentUser, onLogo
             method: 'POST',
             body: file,
           },
-          true // Mark this as a file upload
+          true
         );
         
         if (!response.ok) {
@@ -76,7 +72,6 @@ const PostUploader: React.FC<PostUploaderProps> = ({ onPost, currentUser, onLogo
         uploadedMediaUrl = blobResult.url;
       }
 
-      // Step 2: Create the post with text and media URL.
       const postPayload = {
         content: trimmedCaption,
         mediaUrl: uploadedMediaUrl,
@@ -93,20 +88,15 @@ const PostUploader: React.FC<PostUploaderProps> = ({ onPost, currentUser, onLogo
         throw new Error(errorData.error || 'Failed to save post.');
       }
 
-      // Step 3: Success! Refresh the main post list and reset the form.
       onPost();
       resetForm();
 
     } catch (error) {
-      // The fetchWithAuth service handles 401s by reloading.
-      // This catch block will only handle other errors (e.g., 500 server error, network issues).
-      // The "Session expired" error from fetchWithAuth's rejection will be caught here, but since the
-      // page is already reloading, showing an alert is unnecessary and may not even be seen.
       if (!(error as Error).message.includes('Session expired')) {
           console.error('Error creating post:', error);
           alert(`Error: ${error instanceof Error ? error.message : 'An unknown error occurred.'}`);
       }
-      setIsUploading(false); // Re-enable the form on failure.
+      setIsUploading(false);
     }
   };
   
