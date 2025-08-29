@@ -61,7 +61,7 @@ export default async function handler(req, res) {
             (
               SELECT json_agg(json_build_object(
                 'id', c.id,
-                'text', c.text,
+                'text', c.content,   -- ✅ FIXED HERE
                 'timestamp', c.created_at,
                 'user', json_build_object(
                   'id', cu.id,
