@@ -18,13 +18,8 @@ const verifyToken = (req) => {
 export default async function handler(req, res) {
   if (req.method === 'GET') {
     try {
-      // Temporarily bypass auth for GET to debug 500 error
-      // const userPayload = verifyToken(req);
-      // if (!userPayload?.userId) {
-      //   return res.status(401).json({ error: 'Unauthorized' });
-      // }
-
-      const result = await sql`SELECT id, name, email, avatar_url, bio FROM users;`;
+      // REMOVE bio from below if not present in table
+      const result = await sql`SELECT id, name, email, avatar_url FROM users;`;
       return res.status(200).json(result.rows);
     } catch (error) {
       return res.status(500).json({ error: error.message });
