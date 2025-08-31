@@ -15,7 +15,6 @@ export async function fetchWithAuth(
     Authorization: `Bearer ${token}`,
   };
 
-  // Only set Content-Type for JSON, not for file uploads
   if (!isFileUpload) {
     headers["Content-Type"] = "application/json";
   }
@@ -32,4 +31,14 @@ export async function fetchWithAuth(
   }
 
   return response;
+}
+
+// New function to fetch partner requests
+export async function fetchPartnerRequests() {
+  const response = await fetchWithAuth('/api/partner-requests');
+  if (!response.ok) {
+    throw new Error('Failed to fetch partner requests');
+  }
+  const data = await response.json();
+  return data;
 }

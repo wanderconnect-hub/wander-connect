@@ -1,10 +1,10 @@
-
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { findTravelMatches } from '../services/geminiService';
 import type { TravelPreferences, MatchResult, TravelPartnerRequest, User } from '../types';
 import LoadingSpinner from './LoadingSpinner';
-import { HeartIcon, XMarkIcon, ArrowPathIcon, MOCK_RAW_REQUESTS, ChevronLeftIcon, ChevronRightIcon, TRAVEL_STYLES, INTERESTS } from '../constants';
+import { HeartIcon, XMarkIcon, ArrowPathIcon, ChevronLeftIcon, ChevronRightIcon, TRAVEL_STYLES, INTERESTS } from '../constants';
+import { fetchPartnerRequests } from '../services/apiServices';
 
 const PartnerRequestCard: React.FC<{ 
     request: TravelPartnerRequest; 
@@ -75,7 +75,6 @@ const PartnerRequestCard: React.FC<{
     );
 };
 
-
 interface MatchmakingFormProps {
     currentUser: User;
     allUsers: User[];
@@ -101,21 +100,23 @@ const MatchmakingForm: React.FC<MatchmakingFormProps> = ({ currentUser, allUsers
   const [showScrollButtons, setShowScrollButtons] = useState(false);
 
   useEffect(() => {
-    const liveRequests = MOCK_RAW_REQUESTS
-      .filter(request => request.userId !== currentUser.id)
-      .map(rawRequest => {
-        const user = allUsers.find(u => u.id === rawRequest.userId);
-        if (user) {
-            return {
-                user,
-                tripDescription: rawRequest.tripDescription,
-                imageUrl: rawRequest.imageUrl,
-            };
-        }
-        return null;
-    }).filter((req): req is TravelPartnerRequest => req !== null);
-    
-    setPartnerRequests(liveRequests);
+    async function loadPartnerRequests() {
+      try {
+        const requests = await fetchPartnerRequests();
+        const liveRequests = requests
+          .map(request => {
+            const user = allUsers.find(u => u.id === request.userId);
+            if (user) return { ...request, user };
+            return null;
+          })
+          .filter((req): req is TravelPartnerRequest => req !== null);
+        setPartnerRequests(liveRequests);
+      } catch (error) {
+        console.error('Failed to load partner requests:', error);
+        setPartnerRequests([]);
+      }
+    }
+    loadPartnerRequests();
   }, [allUsers, currentUser.id]);
 
   const handleConnectClick = (partnerId: number) => {
@@ -136,7 +137,6 @@ const MatchmakingForm: React.FC<MatchmakingFormProps> = ({ currentUser, allUsers
             setShowScrollButtons(false);
         }
     };
-    // A slight delay to ensure content has rendered before checking
     const timer = setTimeout(checkScrollable, 100);
     window.addEventListener('resize', checkScrollable);
     return () => {
@@ -147,7 +147,7 @@ const MatchmakingForm: React.FC<MatchmakingFormProps> = ({ currentUser, allUsers
 
   const handleScroll = (direction: 'left' | 'right') => {
     if (scrollContainerRef.current) {
-        const scrollAmount = 304; // width of card (288) + gap (16)
+        const scrollAmount = 304;
         scrollContainerRef.current.scrollBy({
             left: direction === 'right' ? scrollAmount : -scrollAmount,
             behavior: 'smooth',
@@ -203,7 +203,7 @@ const MatchmakingForm: React.FC<MatchmakingFormProps> = ({ currentUser, allUsers
     const timer = setTimeout(() => {
       setCurrentIndex((prev) => prev + 1);
       setSwipeDirection('none');
-    }, 500); // match animation duration
+    }, 500);
 
     return () => clearTimeout(timer);
   }, [swipeDirection]);
@@ -215,7 +215,6 @@ const MatchmakingForm: React.FC<MatchmakingFormProps> = ({ currentUser, allUsers
       setShowResults(false);
       setError(null);
   };
-
 
   const renderForm = () => (
      <div className="bg-white p-6 rounded-xl shadow-md border border-stone-200/80">
@@ -308,7 +307,7 @@ const MatchmakingForm: React.FC<MatchmakingFormProps> = ({ currentUser, allUsers
                                <div className="flex justify-between items-center">
                                    <h3 className="text-2xl font-bold text-stone-800">{result.userName}</h3>
                                    <div className="text-white text-sm font-bold px-3 py-1 rounded-full bg-cyan-500">
-                                     {result.compatibilityScore}%
+                                       {result.compatibilityScore}%
                                    </div>
                                </div>
                                <p className="text-stone-500 text-xs uppercase font-semibold">Match Score</p>
@@ -329,54 +328,54 @@ const MatchmakingForm: React.FC<MatchmakingFormProps> = ({ currentUser, allUsers
             </div>
         </div>
     );
-  };
-  
-  return (
-    <div className="max-w-4xl mx-auto py-8">
-      {/* Travel Partner Section */}
-      <div className="mb-12">
-        <h2 className="text-2xl font-bold text-stone-800 mb-4 px-4">Travel Partner Requests</h2>
-        {partnerRequests.length > 0 ? (
-            <div className="relative">
-                <div ref={scrollContainerRef} className="flex overflow-x-auto space-x-4 pb-4" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                    <div className="flex-shrink-0 w-4 md:w-0"></div> {/* Gutter for small screens */}
-                    {partnerRequests.map((request) => (
-                        <PartnerRequestCard key={request.user.id} request={request} onConnect={handleConnectClick} onPass={handlePassClick} />
-                    ))}
-                    <div className="flex-shrink-0 w-4 md:w-0"></div> {/* Gutter */}
-                </div>
-                {showScrollButtons && (
-                    <>
-                        <button 
-                            onClick={() => handleScroll('left')} 
-                            className="absolute left-0 top-1/2 -translate-y-1/2 transform bg-white/90 backdrop-blur-sm rounded-full p-1.5 shadow-lg hover:bg-white z-10 hidden md:block"
-                            aria-label="Scroll left"
-                        >
-                            <ChevronLeftIcon className="w-6 h-6 text-stone-700" />
-                        </button>
-                        <button 
-                            onClick={() => handleScroll('right')}
-                            className="absolute right-0 top-1/2 -translate-y-1/2 transform bg-white/90 backdrop-blur-sm rounded-full p-1.5 shadow-lg hover:bg-white z-10 hidden md:block"
-                            aria-label="Scroll right"
-                        >
-                            <ChevronRightIcon className="w-6 h-6 text-stone-700" />
-                        </button>
-                    </>
-                )}
-            </div>
-        ) : (
-             <p className="text-stone-500 text-center px-4">You're all caught up! No new partner requests.</p>
-        )}
-      </div>
-
-      <div className="px-4">
-        {isLoading && <LoadingSpinner message="Analyzing profiles..." />}
-        {error && !isLoading && <div className="text-center p-4 bg-red-100 text-red-700 rounded-md mb-4">{error}</div>}
-
-        {!isLoading && (showResults ? renderResults() : renderForm())}
-      </div>
+};
+ 
+return (
+  <div className="max-w-4xl mx-auto py-8">
+    {/* Travel Partner Section */}
+    <div className="mb-12">
+      <h2 className="text-2xl font-bold text-stone-800 mb-4 px-4">Travel Partner Requests</h2>
+      {partnerRequests.length > 0 ? (
+          <div className="relative">
+              <div ref={scrollContainerRef} className="flex overflow-x-auto space-x-4 pb-4" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                  <div className="flex-shrink-0 w-4 md:w-0"></div> {/* Gutter for small screens */}
+                  {partnerRequests.map((request) => (
+                      <PartnerRequestCard key={request.user.id} request={request} onConnect={handleConnectClick} onPass={handlePassClick} />
+                  ))}
+                  <div className="flex-shrink-0 w-4 md:w-0"></div> {/* Gutter */}
+              </div>
+              {showScrollButtons && (
+                  <>
+                      <button 
+                          onClick={() => handleScroll('left')} 
+                          className="absolute left-0 top-1/2 -translate-y-1/2 transform bg-white/90 backdrop-blur-sm rounded-full p-1.5 shadow-lg hover:bg-white z-10 hidden md:block"
+                          aria-label="Scroll left"
+                      >
+                          <ChevronLeftIcon className="w-6 h-6 text-stone-700" />
+                      </button>
+                      <button 
+                          onClick={() => handleScroll('right')}
+                          className="absolute right-0 top-1/2 -translate-y-1/2 transform bg-white/90 backdrop-blur-sm rounded-full p-1.5 shadow-lg hover:bg-white z-10 hidden md:block"
+                          aria-label="Scroll right"
+                      >
+                          <ChevronRightIcon className="w-6 h-6 text-stone-700" />
+                      </button>
+                  </>
+              )}
+          </div>
+      ) : (
+          <p className="text-stone-500 text-center px-4">You're all caught up! No new partner requests.</p>
+      )}
     </div>
-  );
+
+    <div className="px-4">
+      {isLoading && <LoadingSpinner message="Analyzing profiles..." />}
+      {error && !isLoading && <div className="text-center p-4 bg-red-100 text-red-700 rounded-md mb-4">{error}</div>}
+
+      {!isLoading && (showResults ? renderResults() : renderForm())}
+    </div>
+  </div>
+);
 };
 
 export default MatchmakingForm;

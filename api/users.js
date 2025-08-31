@@ -1,4 +1,3 @@
-// File: /api/users.js
 import { sql } from '@vercel/postgres';
 import jwt from 'jsonwebtoken';
 
@@ -22,7 +21,15 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  // ✅ Update avatar
+  if (req.method === 'GET') {
+    try {
+      const users = await sql`SELECT id, name, email, avatar_url, bio FROM users;`;
+      return res.status(200).json(users);
+    } catch (error) {
+      return res.status(500).json({ error: error.message });
+    }
+  }
+
   if (req.method === 'PUT') {
     try {
       const { avatarUrl } = req.body;
@@ -42,6 +49,6 @@ export default async function handler(req, res) {
     }
   }
 
-  res.setHeader('Allow', ['PUT']);
+  res.setHeader('Allow', ['GET', 'PUT']);
   return res.status(405).end(`Method ${req.method} Not Allowed`);
 }
