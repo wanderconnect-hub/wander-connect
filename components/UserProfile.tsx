@@ -10,7 +10,8 @@ import type { User, Post } from '../types';
 import EditProfileModal from './EditProfileModal';
 import ProfilePostGrid from './ProfilePostGrid';
 import PostDetailModal from './PostDetailModal';
-import PostUploader from './PostUploader'; // <--- ADDED IMPORT
+import PostUploader from './PostUploader';
+import buddyConnectIcon from '../assets/buddy-connect-transparent.png';
 
 const formatStat = (num: number = 0) => {
     if (num >= 1000000) {
@@ -34,7 +35,7 @@ interface UserProfileProps {
     onOpenLikesModal: (post: Post) => void;
     onEditPost: (post: Post) => void;
     onDeletePost: (postId: number) => void;
-    onNewPost?: () => void; // <--- ADDED PROP TO TRIGGER REFRESH
+    onNewPost?: () => void;
 }
 
 const UserProfile: React.FC<UserProfileProps> = ({ 
@@ -49,7 +50,7 @@ const UserProfile: React.FC<UserProfileProps> = ({
     onOpenLikesModal, 
     onEditPost, 
     onDeletePost,
-    onNewPost // <--- ADDED PROP
+    onNewPost
 }) => {
   const miles = user.miles ?? 0;
   const goal = (Math.floor(miles / 10000) + 1) * 10000;
@@ -105,10 +106,9 @@ const UserProfile: React.FC<UserProfileProps> = ({
     };
   }, [isSettingsOpen]);
 
-  // ---- LIVE BUDDIES COUNT STATE ----
+  // Live buddies count
   const [liveBuddiesCount, setLiveBuddiesCount] = useState<number | null>(null);
 
-  // Fetch buddies count on user change
   const fetchBuddiesCount = useCallback(async () => {
     if (!user?.id) return;
     try {
@@ -124,16 +124,35 @@ const UserProfile: React.FC<UserProfileProps> = ({
     fetchBuddiesCount();
   }, [fetchBuddiesCount]);
 
-  // Use live buddies count if available, otherwise fallback to static user.partners
+  // Send new travel partner request
+  const handleSendPartnerRequest = async () => {
+    try {
+      const response = await fetch('/api/partner-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          senderId: currentUser.id,
+          recipientId: user.id,
+          tripDescription: 'Hey, let’s travel together!', 
+          imageUrl: '',
+        }),
+      });
+      if (!response.ok) throw new Error('Failed to send partner request');
+      alert('Travel Partner Request sent successfully!');
+    } catch (error) {
+      console.error(error);
+      alert('Failed to send Travel Partner Request.');
+    }
+  };
+
   const partners = liveBuddiesCount !== null ? liveBuddiesCount : (user.partners ?? 0);
   const trips = user.trips ?? 0;
   const placesCount = user.placesCount ?? 0;
-  
+
   const selectedPost = selectedPostIndex !== null ? userPosts[selectedPostIndex] : null;
   const hasNext = selectedPostIndex !== null && selectedPostIndex < userPosts.length - 1;
   const hasPrevious = selectedPostIndex !== null && selectedPostIndex > 0;
 
-  // Stat component - displays key number and label
   const Stat = ({ value, label }: { value: string; label: string }) => (
     <div className="text-center">
       <p className="font-bold text-lg sm:text-xl text-stone-800">{value}</p>
@@ -141,7 +160,6 @@ const UserProfile: React.FC<UserProfileProps> = ({
     </div>
   );
 
-  // MenuItem component for settings dropdown
   const MenuItem: React.FC<{
     icon: React.ReactNode; 
     text: string; 
@@ -159,7 +177,6 @@ const UserProfile: React.FC<UserProfileProps> = ({
   return (
     <>
     <div className="max-w-2xl mx-auto bg-white">
-        {/* Cover Photo & Avatar */}
         <div className="relative">
             <div className="h-48 sm:h-56 bg-stone-200">
                 {user.coverPhotoUrl && <img src={user.coverPhotoUrl} alt={`${user.name}'s cover photo`} className="w-full h-full object-cover" />}
@@ -188,7 +205,6 @@ const UserProfile: React.FC<UserProfileProps> = ({
             </div>
         </div>
 
-        {/* User Info and Stats */}
         <div className="pt-20 px-4 pb-6 text-center">
             <h1 className="text-2xl font-bold text-stone-800">{user.name}</h1>
             <p className="mt-2 text-stone-600 whitespace-pre-line text-sm max-w-md mx-auto">{user.bio}</p>
@@ -197,7 +213,20 @@ const UserProfile: React.FC<UserProfileProps> = ({
             <div className="flex justify-around items-center">
                 <Stat value={trips.toString()} label={trips === 1 ? 'Trip' : 'Trips'} />
                 <Stat value={placesCount.toString()} label={placesCount === 1 ? 'Place' : 'Places'} />
-                <Stat value={partners.toString()} label={partners === 1 ? 'Travel Buddy' : 'Travel Buddies'} />
+                <div className="flex items-center space-x-2">
+                  <Stat value={partners.toString()} label={partners === 1 ? 'Travel Buddy' : 'Travel Buddies'} />
+                  {!isCurrentUserProfile && (
+                    <button
+                      type="button"
+                      onClick={handleSendPartnerRequest}
+                      title="Send Travel Partner Request"
+                      className="p-1 hover:bg-cyan-100 rounded"
+                      aria-label="Send Travel Partner Request"
+                    >
+                      <img src={buddyConnectIcon} alt="Connect as Travel Buddy" style={{ width: 24, height: 24 }} />
+                    </button>
+                  )}
+                </div>
             </div>
 
             <section className="mt-6">
@@ -214,11 +243,9 @@ const UserProfile: React.FC<UserProfileProps> = ({
             </section>
         </div>
 
-        {/* Post Grid */}
         <ProfilePostGrid posts={userPosts} onPostClick={handleOpenPost} />
     </div>
 
-    {/* Modals */}
     {isCurrentUserProfile && isEditProfileOpen && onUpdateUser && (
         <EditProfileModal user={user} onSave={(updatedUser) => { onUpdateUser(updatedUser); setIsEditProfileOpen(false); }} onClose={() => setIsEditProfileOpen(false)} />
     )}
