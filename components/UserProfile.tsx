@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
     ArrowTrendingUpIcon,
@@ -12,7 +12,6 @@ import ProfilePostGrid from './ProfilePostGrid';
 import PostDetailModal from './PostDetailModal';
 import PostUploader from './PostUploader'; // <--- ADDED IMPORT
 
-// Helper to format large numbers
 const formatStat = (num: number = 0) => {
     if (num >= 1000000) {
         return `${(num / 1000000).toFixed(1)}m`;
@@ -106,19 +105,48 @@ const UserProfile: React.FC<UserProfileProps> = ({
     };
   }, [isSettingsOpen]);
 
+  // ---- LIVE BUDDIES COUNT STATE ----
+  const [liveBuddiesCount, setLiveBuddiesCount] = useState<number | null>(null);
 
+  // Fetch buddies count on user change
+  const fetchBuddiesCount = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const response = await fetch(`/api/connections?userId=${user.id}`);
+      const data = await response.json();
+      setLiveBuddiesCount(data.buddiesCount ?? 0);
+    } catch (error) {
+      console.error('Failed to fetch buddies count:', error);
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    fetchBuddiesCount();
+  }, [fetchBuddiesCount]);
+
+  // Use live buddies count if available, otherwise fallback to static user.partners
+  const partners = liveBuddiesCount !== null ? liveBuddiesCount : (user.partners ?? 0);
+  const trips = user.trips ?? 0;
+  const placesCount = user.placesCount ?? 0;
+  
+  const selectedPost = selectedPostIndex !== null ? userPosts[selectedPostIndex] : null;
+  const hasNext = selectedPostIndex !== null && selectedPostIndex < userPosts.length - 1;
+  const hasPrevious = selectedPostIndex !== null && selectedPostIndex > 0;
+
+  // Stat component - displays key number and label
   const Stat = ({ value, label }: { value: string; label: string }) => (
     <div className="text-center">
       <p className="font-bold text-lg sm:text-xl text-stone-800">{value}</p>
       <p className="text-sm text-stone-500">{label}</p>
     </div>
   );
-  
+
+  // MenuItem component for settings dropdown
   const MenuItem: React.FC<{
-      icon: React.ReactNode; 
-      text: string; 
-      onClick: () => void;
-      isDestructive?: boolean;
+    icon: React.ReactNode; 
+    text: string; 
+    onClick: () => void;
+    isDestructive?: boolean;
   }> = ({ icon, text, onClick, isDestructive = false }) => (
     <li>
         <button onClick={onClick} className={`w-full text-left flex items-center gap-3 px-4 py-3 text-sm ${isDestructive ? 'text-red-600 hover:bg-red-50' : 'text-stone-700 hover:bg-stone-100'} transition-colors`}>
@@ -128,18 +156,10 @@ const UserProfile: React.FC<UserProfileProps> = ({
     </li>
   );
 
-  const partners = user.partners ?? 0;
-  const trips = user.trips ?? 0;
-  const placesCount = user.placesCount ?? 0;
-  
-  const selectedPost = selectedPostIndex !== null ? userPosts[selectedPostIndex] : null;
-  const hasNext = selectedPostIndex !== null && selectedPostIndex < userPosts.length - 1;
-  const hasPrevious = selectedPostIndex !== null && selectedPostIndex > 0;
-
   return (
     <>
     <div className="max-w-2xl mx-auto bg-white">
-        {/* ... (Cover Photo, Settings Button, Avatar code is unchanged) ... */}
+        {/* Cover Photo & Avatar */}
         <div className="relative">
             <div className="h-48 sm:h-56 bg-stone-200">
                 {user.coverPhotoUrl && <img src={user.coverPhotoUrl} alt={`${user.name}'s cover photo`} className="w-full h-full object-cover" />}
@@ -168,7 +188,7 @@ const UserProfile: React.FC<UserProfileProps> = ({
             </div>
         </div>
 
-        {/* ... (User Info & Stats section is unchanged) ... */}
+        {/* User Info and Stats */}
         <div className="pt-20 px-4 pb-6 text-center">
             <h1 className="text-2xl font-bold text-stone-800">{user.name}</h1>
             <p className="mt-2 text-stone-600 whitespace-pre-line text-sm max-w-md mx-auto">{user.bio}</p>
@@ -179,6 +199,7 @@ const UserProfile: React.FC<UserProfileProps> = ({
                 <Stat value={placesCount.toString()} label={placesCount === 1 ? 'Place' : 'Places'} />
                 <Stat value={partners.toString()} label={partners === 1 ? 'Buddy' : 'Buddies'} />
             </div>
+
             <section className="mt-6">
                 <div className="flex justify-between items-center text-sm mb-1">
                     <div className="flex items-center gap-2 text-stone-600 font-semibold">
@@ -193,10 +214,10 @@ const UserProfile: React.FC<UserProfileProps> = ({
             </section>
         </div>
 
-        {/* --- THIS IS THE NEW SECTION --- */}
-        {isCurrentUserProfile && onNewPost && (
+
+        {isCurrentUserProfile && onNewPost && onLogout && (
             <div className="px-4 py-6 border-b border-stone-200">
-                <PostUploader currentUser={currentUser} onPost={onNewPost} />
+                <PostUploader currentUser={currentUser} onPost={onNewPost} onLogout={onLogout} />
             </div>
         )}
 
@@ -204,7 +225,7 @@ const UserProfile: React.FC<UserProfileProps> = ({
         <ProfilePostGrid posts={userPosts} onPostClick={handleOpenPost} />
     </div>
 
-    {/* ... (Modals are unchanged) ... */}
+    {/* Modals */}
     {isCurrentUserProfile && isEditProfileOpen && onUpdateUser && (
         <EditProfileModal user={user} onSave={(updatedUser) => { onUpdateUser(updatedUser); setIsEditProfileOpen(false); }} onClose={() => setIsEditProfileOpen(false)} />
     )}
