@@ -197,7 +197,7 @@ const UserProfile: React.FC<UserProfileProps> = ({
             <div className="flex justify-around items-center">
                 <Stat value={trips.toString()} label={trips === 1 ? 'Trip' : 'Trips'} />
                 <Stat value={placesCount.toString()} label={placesCount === 1 ? 'Place' : 'Places'} />
-                <Stat value={partners.toString()} label={partners === 1 ? 'Buddy' : 'Buddies'} />
+                <Stat value={partners.toString()} label={partners === 1 ? 'Travel Buddy' : 'Travel Buddies'} />
             </div>
 
             <section className="mt-6">
@@ -213,7 +213,6 @@ const UserProfile: React.FC<UserProfileProps> = ({
                 </div>
             </section>
         </div>
-
 
         {/* Post Grid */}
         <ProfilePostGrid posts={userPosts} onPostClick={handleOpenPost} />
