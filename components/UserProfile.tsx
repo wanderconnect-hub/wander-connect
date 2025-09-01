@@ -215,12 +215,6 @@ const UserProfile: React.FC<UserProfileProps> = ({
         </div>
 
 
-        {isCurrentUserProfile && onNewPost && onLogout && (
-            <div className="px-4 py-6 border-b border-stone-200">
-                <PostUploader currentUser={currentUser} onPost={onNewPost} onLogout={onLogout} />
-            </div>
-        )}
-
         {/* Post Grid */}
         <ProfilePostGrid posts={userPosts} onPostClick={handleOpenPost} />
     </div>
