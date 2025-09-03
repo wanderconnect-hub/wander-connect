@@ -1,14 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react'; 
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { findTravelMatches } from '../services/geminiService';
-import type { TravelPreferences, MatchResult, TravelPartnerRequest, User } from '../types';
-import LoadingSpinner from './LoadingSpinner';
+import type { TravelPartnerRequest, User } from '../types';
 import { ChevronLeftIcon, ChevronRightIcon } from '../constants';
 import { fetchPartnerRequests } from '../services/apiServices';
 
 // ---- Helper API call to respond to partner request (accept/reject) ----
 async function respondToPartnerRequest(requestId: number, action: 'accept' | 'reject') {
-  const response = await fetch('/api/partner-requests/respond', {
+  const response = await fetch('/api/partner-requests', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ requestId, action }),
@@ -27,10 +25,9 @@ async function fetchBuddiesCount(userId: number) {
   return data.buddiesCount ?? 0;
 }
 
-// Placeholder: You should update profile or global state with new buddies count here
+// Placeholder: update profile/global state
 function updateUserProfileBuddiesCount(userId: number, newCount: number) {
   console.log(`Updated buddies count for user ${userId}: ${newCount}`);
-  // Implement state or context update here for live profile refresh
 }
 
 // ---- PartnerRequestCard component ----
@@ -118,10 +115,9 @@ interface MatchmakingFormProps {
 const MatchmakingForm: React.FC<MatchmakingFormProps> = ({ currentUser, allUsers, onAddConnection }) => {
   const [partnerRequests, setPartnerRequests] = useState<TravelPartnerRequest[]>([]);
   const [dismissedIds, setDismissedIds] = useState<number[]>([]);
-  const [message, setMessage] = useState<string | null>(null);
-
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [showScrollButtons, setShowScrollButtons] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Load partner requests (filter dismissed + accepted/rejected)
   useEffect(() => {
@@ -144,8 +140,9 @@ const MatchmakingForm: React.FC<MatchmakingFormProps> = ({ currentUser, allUsers
           .filter((req): req is TravelPartnerRequest => req !== null);
 
         setPartnerRequests(liveRequests);
-      } catch (error) {
-        console.error('Failed to load partner requests:', error);
+      } catch (err: any) {
+        console.error('Failed to load partner requests:', err);
+        setError('Something went wrong. Try again.');
         setPartnerRequests([]);
       }
     }
@@ -168,14 +165,9 @@ const MatchmakingForm: React.FC<MatchmakingFormProps> = ({ currentUser, allUsers
 
       const partnerCount = await fetchBuddiesCount(partnerId);
       updateUserProfileBuddiesCount(partnerId, partnerCount);
-
-      // show success message
-      setMessage('✅ Connected successfully!');
-      setTimeout(() => setMessage(null), 3000);
-    } catch (error) {
-      console.error(error);
-      setMessage('⚠️ Something went wrong. Try again.');
-      setTimeout(() => setMessage(null), 3000);
+    } catch (err) {
+      console.error(err);
+      setError('Failed to connect. Try again.');
     }
   };
 
@@ -185,12 +177,9 @@ const MatchmakingForm: React.FC<MatchmakingFormProps> = ({ currentUser, allUsers
       await respondToPartnerRequest(requestId, 'reject');
       setPartnerRequests(prev => prev.filter(req => req.id !== requestId));
       setDismissedIds(prev => [...prev, requestId]);
-      setMessage('❌ Request rejected');
-      setTimeout(() => setMessage(null), 3000);
-    } catch (error) {
-      console.error(error);
-      setMessage('⚠️ Something went wrong. Try again.');
-      setTimeout(() => setMessage(null), 3000);
+    } catch (err) {
+      console.error(err);
+      setError('Failed to pass. Try again.');
     }
   };
 
@@ -224,10 +213,10 @@ const MatchmakingForm: React.FC<MatchmakingFormProps> = ({ currentUser, allUsers
 
   return (
     <div className="max-w-4xl mx-auto py-8">
-      {/* Message Section */}
-      {message && (
-        <div className="mb-4 p-2 bg-blue-100 text-blue-800 rounded-md text-center text-sm">
-          {message}
+      {/* Error Banner */}
+      {error && (
+        <div className="bg-blue-100 text-blue-800 text-center p-2 rounded mb-4">
+          ⚠ {error}
         </div>
       )}
 
