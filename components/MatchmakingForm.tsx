@@ -20,6 +20,21 @@ async function respondToPartnerRequest(requestId: number, action: 'accept' | 're
   return await response.json();
 }
 
+// Placeholder function demonstration for fetching a user's profile
+// Replace with your actual implementation
+async function fetchUserProfile(userId: number) {
+  const response = await fetch(`/api/users/${userId}`);
+  if (!response.ok) throw new Error('Failed to fetch user profile');
+  return await response.json();
+}
+
+// You should connect this to your actual profile state/context update logic
+function updateUserProfileState(userId: number, newProfileData: any) {
+  // For example, update React context or parent component state
+  // This is a placeholder
+  console.log(`Profile for user ${userId} updated with`, newProfileData);
+}
+
 
 // ---- PartnerRequestCard component ----
 const PartnerRequestCard: React.FC<{ 
@@ -162,6 +177,14 @@ const MatchmakingForm: React.FC<MatchmakingFormProps> = ({ currentUser, allUsers
       if (!request) throw new Error('Partner request not found');
       await respondToPartnerRequest(request.id, 'accept');
       onAddConnection(partnerId);
+
+      // Refresh profile data (you should implement these update functions as per your app architecture)
+      const updatedCurrentUserProfile = await fetchUserProfile(currentUser.id);
+      updateUserProfileState(currentUser.id, updatedCurrentUserProfile);
+
+      const updatedPartnerProfile = await fetchUserProfile(partnerId);
+      updateUserProfileState(partnerId, updatedPartnerProfile);
+
       setPartnerRequests(prev => prev.filter(req => req.user.id !== partnerId));
     } catch (error) {
       console.error(error);
