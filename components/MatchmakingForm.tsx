@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react'; 
 import { Link } from 'react-router-dom';
 import { findTravelMatches } from '../services/geminiService';
 import type { TravelPreferences, MatchResult, TravelPartnerRequest, User } from '../types';
@@ -118,6 +118,7 @@ interface MatchmakingFormProps {
 const MatchmakingForm: React.FC<MatchmakingFormProps> = ({ currentUser, allUsers, onAddConnection }) => {
   const [partnerRequests, setPartnerRequests] = useState<TravelPartnerRequest[]>([]);
   const [dismissedIds, setDismissedIds] = useState<number[]>([]);
+  const [message, setMessage] = useState<string | null>(null);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [showScrollButtons, setShowScrollButtons] = useState(false);
@@ -168,8 +169,13 @@ const MatchmakingForm: React.FC<MatchmakingFormProps> = ({ currentUser, allUsers
       const partnerCount = await fetchBuddiesCount(partnerId);
       updateUserProfileBuddiesCount(partnerId, partnerCount);
 
+      // show success message
+      setMessage('✅ Connected successfully!');
+      setTimeout(() => setMessage(null), 3000);
     } catch (error) {
       console.error(error);
+      setMessage('⚠️ Something went wrong. Try again.');
+      setTimeout(() => setMessage(null), 3000);
     }
   };
 
@@ -179,8 +185,12 @@ const MatchmakingForm: React.FC<MatchmakingFormProps> = ({ currentUser, allUsers
       await respondToPartnerRequest(requestId, 'reject');
       setPartnerRequests(prev => prev.filter(req => req.id !== requestId));
       setDismissedIds(prev => [...prev, requestId]);
+      setMessage('❌ Request rejected');
+      setTimeout(() => setMessage(null), 3000);
     } catch (error) {
       console.error(error);
+      setMessage('⚠️ Something went wrong. Try again.');
+      setTimeout(() => setMessage(null), 3000);
     }
   };
 
@@ -214,6 +224,13 @@ const MatchmakingForm: React.FC<MatchmakingFormProps> = ({ currentUser, allUsers
 
   return (
     <div className="max-w-4xl mx-auto py-8">
+      {/* Message Section */}
+      {message && (
+        <div className="mb-4 p-2 bg-blue-100 text-blue-800 rounded-md text-center text-sm">
+          {message}
+        </div>
+      )}
+
       {/* Travel Partner Requests Section */}
       <div className="mb-12">
         <h2 className="text-2xl font-bold text-stone-800 mb-4 px-4">Travel Partner Requests</h2>
