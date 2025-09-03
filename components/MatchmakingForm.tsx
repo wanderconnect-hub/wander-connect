@@ -20,19 +20,18 @@ async function respondToPartnerRequest(requestId: number, action: 'accept' | 're
   return await response.json();
 }
 
-// Placeholder function demonstration for fetching a user's profile
-// Replace with your actual implementation
-async function fetchUserProfile(userId: number) {
-  const response = await fetch(`/api/users/${userId}`);
-  if (!response.ok) throw new Error('Failed to fetch user profile');
-  return await response.json();
+// Fetch buddies count for given userId
+async function fetchBuddiesCount(userId: number) {
+  const response = await fetch(`/api/connections?userId=${userId}`);
+  if (!response.ok) throw new Error('Failed to fetch buddies count');
+  const data = await response.json();
+  return data.buddiesCount ?? 0;
 }
 
-// You should connect this to your actual profile state/context update logic
-function updateUserProfileState(userId: number, newProfileData: any) {
-  // For example, update React context or parent component state
-  // This is a placeholder
-  console.log(`Profile for user ${userId} updated with`, newProfileData);
+// Placeholder: You should update profile or global state with new buddies count here
+function updateUserProfileBuddiesCount(userId: number, newCount: number) {
+  console.log(`Updated buddies count for user ${userId}: ${newCount}`);
+  // Implement state or context update here for live profile refresh
 }
 
 
@@ -133,7 +132,7 @@ const MatchmakingForm: React.FC<MatchmakingFormProps> = ({ currentUser, allUsers
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Updated partner requests state
+  // Partner requests state
   const [partnerRequests, setPartnerRequests] = useState<TravelPartnerRequest[]>([]);
 
   // Scroll container and buttons
@@ -178,12 +177,13 @@ const MatchmakingForm: React.FC<MatchmakingFormProps> = ({ currentUser, allUsers
       await respondToPartnerRequest(request.id, 'accept');
       onAddConnection(partnerId);
 
-      // Refresh profile data (you should implement these update functions as per your app architecture)
-      const updatedCurrentUserProfile = await fetchUserProfile(currentUser.id);
-      updateUserProfileState(currentUser.id, updatedCurrentUserProfile);
+      // Refresh buddies count for current user
+      const currentUserCount = await fetchBuddiesCount(currentUser.id);
+      updateUserProfileBuddiesCount(currentUser.id, currentUserCount);
 
-      const updatedPartnerProfile = await fetchUserProfile(partnerId);
-      updateUserProfileState(partnerId, updatedPartnerProfile);
+      // Refresh buddies count for partner
+      const partnerCount = await fetchBuddiesCount(partnerId);
+      updateUserProfileBuddiesCount(partnerId, partnerCount);
 
       setPartnerRequests(prev => prev.filter(req => req.user.id !== partnerId));
     } catch (error) {
@@ -277,16 +277,14 @@ const MatchmakingForm: React.FC<MatchmakingFormProps> = ({ currentUser, allUsers
         )}
       </div>
 
-      {/* Search form, results, etc. can remain unchanged or be added here */}
+      {/* Other UI components can remain unchanged */}
       <div className="px-4">
         {isLoading && <LoadingSpinner message="Analyzing profiles..." />}
         {error && !isLoading && <div className="text-center p-4 bg-red-100 text-red-700 rounded-md mb-4">{error}</div>}
 
         {!isLoading && (showResults ? (
-          // Render your existing results here, e.g. renderResults()
           null
         ) : (
-          // Render your existing form here, e.g. renderForm()
           null
         ))}
       </div>
