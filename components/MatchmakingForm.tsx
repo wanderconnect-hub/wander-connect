@@ -6,21 +6,18 @@ import LoadingSpinner from './LoadingSpinner';
 import { HeartIcon, XMarkIcon, ArrowPathIcon, ChevronLeftIcon, ChevronRightIcon, TRAVEL_STYLES, INTERESTS } from '../constants';
 import { fetchPartnerRequests } from '../services/apiServices';
 
-
-// ---- Helper API call to respond to partner request (accept/reject) ----
+// ---- API: Respond to partner request ----
 async function respondToPartnerRequest(requestId: number, action: 'accept' | 'reject') {
   const response = await fetch('/api/partner-requests/respond', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ requestId, action }),
   });
-  if (!response.ok) {
-    throw new Error('Failed to respond to partner request');
-  }
+  if (!response.ok) throw new Error('Failed to respond to partner request');
   return await response.json();
 }
 
-// Fetch buddies count for given userId
+// ---- API: Fetch buddies count ----
 async function fetchBuddiesCount(userId: number) {
   const response = await fetch(`/api/connections?userId=${userId}`);
   if (!response.ok) throw new Error('Failed to fetch buddies count');
@@ -28,14 +25,13 @@ async function fetchBuddiesCount(userId: number) {
   return data.buddiesCount ?? 0;
 }
 
-// Placeholder: You should update profile or global state with new buddies count here
+// ---- Stub: update user profile/global state with buddies count ----
 function updateUserProfileBuddiesCount(userId: number, newCount: number) {
   console.log(`Updated buddies count for user ${userId}: ${newCount}`);
-  // Implement state or context update here for live profile refresh
+  // TODO: Hook into context/global state if you want live UI refresh
 }
 
-
-// ---- PartnerRequestCard component ----
+// ---- Partner Request Card ----
 const PartnerRequestCard: React.FC<{ 
   request: TravelPartnerRequest; 
   onConnect: (userId: number) => Promise<void>;  
@@ -110,8 +106,7 @@ const PartnerRequestCard: React.FC<{
   );
 };
 
-
-// ---- Main MatchmakingForm component ----
+// ---- Main MatchmakingForm ----
 interface MatchmakingFormProps {
   currentUser: User;
   allUsers: User[];
@@ -132,14 +127,11 @@ const MatchmakingForm: React.FC<MatchmakingFormProps> = ({ currentUser, allUsers
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Partner requests state
   const [partnerRequests, setPartnerRequests] = useState<TravelPartnerRequest[]>([]);
-
-  // Scroll container and buttons
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [showScrollButtons, setShowScrollButtons] = useState(false);
 
-  // Load partner requests filtering only where currentUser is recipient
+  // Load partner requests for current user
   useEffect(() => {
     async function loadPartnerRequests() {
       try {
@@ -158,7 +150,6 @@ const MatchmakingForm: React.FC<MatchmakingFormProps> = ({ currentUser, allUsers
             return null;
           })
           .filter((req): req is TravelPartnerRequest => req !== null);
-
         setPartnerRequests(liveRequests);
       } catch (error) {
         console.error('Failed to load partner requests:', error);
@@ -168,8 +159,7 @@ const MatchmakingForm: React.FC<MatchmakingFormProps> = ({ currentUser, allUsers
     loadPartnerRequests();
   }, [allUsers, currentUser.id]);
 
-
-  // Handlers for connect and pass
+  // Accept connection
   const handleConnectClick = async (partnerId: number) => {
     try {
       const request = partnerRequests.find(r => r.user.id === partnerId);
@@ -177,11 +167,10 @@ const MatchmakingForm: React.FC<MatchmakingFormProps> = ({ currentUser, allUsers
       await respondToPartnerRequest(request.id, 'accept');
       onAddConnection(partnerId);
 
-      // Refresh buddies count for current user
+      // Refresh buddy counts
       const currentUserCount = await fetchBuddiesCount(currentUser.id);
       updateUserProfileBuddiesCount(currentUser.id, currentUserCount);
 
-      // Refresh buddies count for partner
       const partnerCount = await fetchBuddiesCount(partnerId);
       updateUserProfileBuddiesCount(partnerId, partnerCount);
 
@@ -191,6 +180,7 @@ const MatchmakingForm: React.FC<MatchmakingFormProps> = ({ currentUser, allUsers
     }
   };
 
+  // Reject connection
   const handlePassClick = async (partnerId: number) => {
     try {
       const request = partnerRequests.find(r => r.user.id === partnerId);
@@ -202,7 +192,7 @@ const MatchmakingForm: React.FC<MatchmakingFormProps> = ({ currentUser, allUsers
     }
   };
 
-  // Scroll buttons visibility
+  // Check scroll buttons visibility
   useEffect(() => {
     const checkScrollable = () => {
       if (scrollContainerRef.current) {
@@ -232,7 +222,7 @@ const MatchmakingForm: React.FC<MatchmakingFormProps> = ({ currentUser, allUsers
 
   return (
     <div className="max-w-4xl mx-auto py-8">
-      {/* Travel Partner Requests Section */}
+      {/* Travel Partner Requests */}
       <div className="mb-12">
         <h2 className="text-2xl font-bold text-stone-800 mb-4 px-4">Travel Partner Requests</h2>
         {partnerRequests.length > 0 ? (
@@ -242,7 +232,7 @@ const MatchmakingForm: React.FC<MatchmakingFormProps> = ({ currentUser, allUsers
               className="flex overflow-x-auto space-x-4 pb-4"
               style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
-              <div className="flex-shrink-0 w-4 md:w-0"></div> {/* Left gutter */}
+              <div className="flex-shrink-0 w-4 md:w-0"></div>
               {partnerRequests.map(request => (
                 <PartnerRequestCard
                   key={request.id}
@@ -251,7 +241,7 @@ const MatchmakingForm: React.FC<MatchmakingFormProps> = ({ currentUser, allUsers
                   onPass={handlePassClick}
                 />
               ))}
-              <div className="flex-shrink-0 w-4 md:w-0"></div> {/* Right gutter */}
+              <div className="flex-shrink-0 w-4 md:w-0"></div>
             </div>
             {showScrollButtons && (
               <>
@@ -277,16 +267,10 @@ const MatchmakingForm: React.FC<MatchmakingFormProps> = ({ currentUser, allUsers
         )}
       </div>
 
-      {/* Other UI components can remain unchanged */}
+      {/* Placeholder for future match results */}
       <div className="px-4">
         {isLoading && <LoadingSpinner message="Analyzing profiles..." />}
         {error && !isLoading && <div className="text-center p-4 bg-red-100 text-red-700 rounded-md mb-4">{error}</div>}
-
-        {!isLoading && (showResults ? (
-          null
-        ) : (
-          null
-        ))}
       </div>
     </div>
   );
