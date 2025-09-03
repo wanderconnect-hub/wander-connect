@@ -125,12 +125,13 @@ const MatchmakingForm: React.FC<MatchmakingFormProps> = ({ currentUser, allUsers
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [showScrollButtons, setShowScrollButtons] = useState(false);
 
-  // Updated load partner requests with correct mapping
+  // Load partner requests filtering only where currentUser is recipient
   useEffect(() => {
     async function loadPartnerRequests() {
       try {
         const requests = await fetchPartnerRequests();
         const liveRequests = requests
+          .filter(request => request.recipient_id === currentUser.id)
           .map(request => {
             const user = allUsers.find(u => u.id === request.sender_id);
             if (user) return { 
