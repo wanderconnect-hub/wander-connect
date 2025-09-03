@@ -3,21 +3,23 @@ import { Link } from 'react-router-dom';
 import { findTravelMatches } from '../services/geminiService';
 import type { TravelPreferences, MatchResult, TravelPartnerRequest, User } from '../types';
 import LoadingSpinner from './LoadingSpinner';
-import { HeartIcon, XMarkIcon, ArrowPathIcon, ChevronLeftIcon, ChevronRightIcon, TRAVEL_STYLES, INTERESTS } from '../constants';
+import { ChevronLeftIcon, ChevronRightIcon } from '../constants';
 import { fetchPartnerRequests } from '../services/apiServices';
 
-// ---- API: Respond to partner request ----
+// ---- Helper API call to respond to partner request (accept/reject) ----
 async function respondToPartnerRequest(requestId: number, action: 'accept' | 'reject') {
   const response = await fetch('/api/partner-requests/respond', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ requestId, action }),
   });
-  if (!response.ok) throw new Error('Failed to respond to partner request');
+  if (!response.ok) {
+    throw new Error('Failed to respond to partner request');
+  }
   return await response.json();
 }
 
-// ---- API: Fetch buddies count ----
+// Fetch buddies count for given userId
 async function fetchBuddiesCount(userId: number) {
   const response = await fetch(`/api/connections?userId=${userId}`);
   if (!response.ok) throw new Error('Failed to fetch buddies count');
@@ -25,17 +27,17 @@ async function fetchBuddiesCount(userId: number) {
   return data.buddiesCount ?? 0;
 }
 
-// ---- Stub: update user profile/global state with buddies count ----
+// Placeholder: You should update profile or global state with new buddies count here
 function updateUserProfileBuddiesCount(userId: number, newCount: number) {
   console.log(`Updated buddies count for user ${userId}: ${newCount}`);
-  // TODO: Hook into context/global state if you want live UI refresh
+  // Implement state or context update here for live profile refresh
 }
 
-// ---- Partner Request Card ----
+// ---- PartnerRequestCard component ----
 const PartnerRequestCard: React.FC<{ 
   request: TravelPartnerRequest; 
-  onConnect: (userId: number) => Promise<void>;  
-  onPass: (userId: number) => Promise<void>;
+  onConnect: (userId: number, requestId: number) => Promise<void>;  
+  onPass: (userId: number, requestId: number) => Promise<void>;
 }> = ({ request, onConnect, onPass }) => {
   const [isConnecting, setIsConnecting] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
@@ -45,7 +47,7 @@ const PartnerRequestCard: React.FC<{
     setIsConnecting(true);
     setIsDismissed(true);
     try {
-      await onConnect(request.user.id);
+      await onConnect(request.user.id, request.id);
     } catch (err) {
       setIsConnecting(false);
       setIsDismissed(false);
@@ -55,7 +57,7 @@ const PartnerRequestCard: React.FC<{
   const handlePassClick = async () => {
     setIsDismissed(true);
     try {
-      await onPass(request.user.id);
+      await onPass(request.user.id, request.id);
     } catch (err) {
       setIsDismissed(false);
     }
@@ -106,7 +108,7 @@ const PartnerRequestCard: React.FC<{
   );
 };
 
-// ---- Main MatchmakingForm ----
+// ---- Main MatchmakingForm component ----
 interface MatchmakingFormProps {
   currentUser: User;
   allUsers: User[];
@@ -114,30 +116,19 @@ interface MatchmakingFormProps {
 }
 
 const MatchmakingForm: React.FC<MatchmakingFormProps> = ({ currentUser, allUsers, onAddConnection }) => {
-  const [preferences, setPreferences] = useState<TravelPreferences>({
-    destination: '',
-    travelStyle: [],
-    interests: [],
-    bio: '',
-  });
-  const [results, setResults] = useState<MatchResult[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [swipeDirection, setSwipeDirection] = useState<'left' | 'right' | 'none'>('none');
-  const [showResults, setShowResults] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
   const [partnerRequests, setPartnerRequests] = useState<TravelPartnerRequest[]>([]);
+  const [dismissedIds, setDismissedIds] = useState<number[]>([]);
+
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [showScrollButtons, setShowScrollButtons] = useState(false);
 
-  // Load partner requests for current user
+  // Load partner requests (filter dismissed + accepted/rejected)
   useEffect(() => {
     async function loadPartnerRequests() {
       try {
         const requests = await fetchPartnerRequests();
         const liveRequests = requests
-          .filter(request => request.recipient_id === currentUser.id)
+          .filter(request => request.recipient_id === currentUser.id && !dismissedIds.includes(request.id))
           .map(request => {
             const user = allUsers.find(u => u.id === request.sender_id);
             if (user) return { 
@@ -150,6 +141,7 @@ const MatchmakingForm: React.FC<MatchmakingFormProps> = ({ currentUser, allUsers
             return null;
           })
           .filter((req): req is TravelPartnerRequest => req !== null);
+
         setPartnerRequests(liveRequests);
       } catch (error) {
         console.error('Failed to load partner requests:', error);
@@ -157,42 +149,42 @@ const MatchmakingForm: React.FC<MatchmakingFormProps> = ({ currentUser, allUsers
       }
     }
     loadPartnerRequests();
-  }, [allUsers, currentUser.id]);
+  }, [allUsers, currentUser.id, dismissedIds]);
 
-  // Accept connection
-  const handleConnectClick = async (partnerId: number) => {
+  // Handle connect
+  const handleConnectClick = async (partnerId: number, requestId: number) => {
     try {
-      const request = partnerRequests.find(r => r.user.id === partnerId);
-      if (!request) throw new Error('Partner request not found');
-      await respondToPartnerRequest(request.id, 'accept');
+      await respondToPartnerRequest(requestId, 'accept');
       onAddConnection(partnerId);
 
-      // Refresh buddy counts
+      // remove immediately
+      setPartnerRequests(prev => prev.filter(req => req.id !== requestId));
+      setDismissedIds(prev => [...prev, requestId]);
+
+      // update buddy counts
       const currentUserCount = await fetchBuddiesCount(currentUser.id);
       updateUserProfileBuddiesCount(currentUser.id, currentUserCount);
 
       const partnerCount = await fetchBuddiesCount(partnerId);
       updateUserProfileBuddiesCount(partnerId, partnerCount);
 
-      setPartnerRequests(prev => prev.filter(req => req.user.id !== partnerId));
     } catch (error) {
       console.error(error);
     }
   };
 
-  // Reject connection
-  const handlePassClick = async (partnerId: number) => {
+  // Handle pass
+  const handlePassClick = async (partnerId: number, requestId: number) => {
     try {
-      const request = partnerRequests.find(r => r.user.id === partnerId);
-      if (!request) throw new Error('Partner request not found');
-      await respondToPartnerRequest(request.id, 'reject');
-      setPartnerRequests(prev => prev.filter(req => req.user.id !== partnerId));
+      await respondToPartnerRequest(requestId, 'reject');
+      setPartnerRequests(prev => prev.filter(req => req.id !== requestId));
+      setDismissedIds(prev => [...prev, requestId]);
     } catch (error) {
       console.error(error);
     }
   };
 
-  // Check scroll buttons visibility
+  // Scroll buttons visibility
   useEffect(() => {
     const checkScrollable = () => {
       if (scrollContainerRef.current) {
@@ -222,7 +214,7 @@ const MatchmakingForm: React.FC<MatchmakingFormProps> = ({ currentUser, allUsers
 
   return (
     <div className="max-w-4xl mx-auto py-8">
-      {/* Travel Partner Requests */}
+      {/* Travel Partner Requests Section */}
       <div className="mb-12">
         <h2 className="text-2xl font-bold text-stone-800 mb-4 px-4">Travel Partner Requests</h2>
         {partnerRequests.length > 0 ? (
@@ -265,12 +257,6 @@ const MatchmakingForm: React.FC<MatchmakingFormProps> = ({ currentUser, allUsers
         ) : (
           <p className="text-stone-500 text-center px-4">You're all caught up! No new partner requests.</p>
         )}
-      </div>
-
-      {/* Placeholder for future match results */}
-      <div className="px-4">
-        {isLoading && <LoadingSpinner message="Analyzing profiles..." />}
-        {error && !isLoading && <div className="text-center p-4 bg-red-100 text-red-700 rounded-md mb-4">{error}</div>}
       </div>
     </div>
   );
