@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { getDestinationInfo } from '../services/geminiService';
 import type { DestinationInfo } from '../types';
 import LoadingSpinner from './LoadingSpinner';
@@ -49,6 +49,7 @@ const DestinationExplorer: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cache, setCache] = useState<Record<string, DestinationInfo>>({});
+  const carouselRef = useRef<HTMLDivElement | null>(null);
 
   const fetchDestinationInfo = useCallback(async (dest: string) => {
     if (!dest) return;
@@ -84,6 +85,17 @@ const DestinationExplorer: React.FC = () => {
     fetchDestinationInfo(suggestedDest);
   };
 
+  const scrollCarousel = (direction: 'left' | 'right') => {
+    if (carouselRef.current) {
+      const scrollAmount = 300; // adjust scroll step
+      if (direction === 'left') {
+        carouselRef.current.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+      } else {
+        carouselRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+      }
+    }
+  };
+
   return (
     <div className="max-w-5xl mx-auto py-8 px-4">
       {/* Header */}
@@ -114,7 +126,19 @@ const DestinationExplorer: React.FC = () => {
       {/* Carousel */}
       <h2 className="text-xl font-bold text-stone-700 mb-4">✨ Top Suggestions</h2>
       <div className="relative">
-        <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+        {/* Left Button */}
+        <button
+          onClick={() => scrollCarousel('left')}
+          className="absolute left-0 top-1/2 -translate-y-1/2 bg-white/80 backdrop-blur-md p-2 rounded-full shadow-md hover:bg-white z-10"
+        >
+          <ChevronLeft className="w-6 h-6 text-cyan-700" />
+        </button>
+
+        {/* Scrollable Row */}
+        <div
+          ref={carouselRef}
+          className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide scroll-smooth"
+        >
           {suggestedDestinations.map((place) => (
             <button
               key={place.name}
@@ -130,6 +154,14 @@ const DestinationExplorer: React.FC = () => {
             </button>
           ))}
         </div>
+
+        {/* Right Button */}
+        <button
+          onClick={() => scrollCarousel('right')}
+          className="absolute right-0 top-1/2 -translate-y-1/2 bg-white/80 backdrop-blur-md p-2 rounded-full shadow-md hover:bg-white z-10"
+        >
+          <ChevronRight className="w-6 h-6 text-cyan-700" />
+        </button>
       </div>
 
       {/* Results */}
