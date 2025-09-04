@@ -175,7 +175,7 @@ const DestinationExplorer: React.FC = () => {
   };
 
   const nextSlide = () => {
-    setCurrentIndex((prevIndex) => (prevIndex + 1) % suggestedDestinations.length);
+    setCurrentIndex((prevIndex) => (prevIndex + 1) % Math.ceil(suggestedDestinations.length / 3));
   };
 
   useEffect(() => {
@@ -206,7 +206,7 @@ const DestinationExplorer: React.FC = () => {
         <p className="text-stone-500 mb-6">Discover your next adventure. Powered by AI.</p>
       </div>
 
-      {/* Carousel */}
+      {/* Carousel FIXED: group cards */}
       <div className="mb-8 relative">
         <h2 className="text-lg font-bold text-stone-600 mb-4 text-center">Top Suggestions</h2>
         <div className="relative overflow-hidden rounded-xl shadow-lg">
@@ -214,28 +214,31 @@ const DestinationExplorer: React.FC = () => {
             className="flex transition-transform duration-700"
             style={{
               transform: `translateX(-${currentIndex * 100}%)`,
-              width: `${suggestedDestinations.length * 100}%`,
+              width: `${Math.ceil(suggestedDestinations.length / 3) * 100}%`,
             }}
           >
-            {suggestedDestinations.map((place) => (
-              <button
-                key={place.name}
-                onClick={() => handleSuggestionClick(place.name)}
-                className="relative w-full flex-shrink-0 aspect-square group focus:outline-none"
-                aria-label={`Explore ${place.name}`}
-              >
-                <img
-                  src={place.imageUrl}
-                  alt={place.name}
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
-                <div className="absolute bottom-0 p-3 w-full">
-                  <h3 className="text-white font-bold text-base leading-tight drop-shadow-md text-left">
-                    {place.name}
-                  </h3>
-                </div>
-              </button>
+            {Array.from({ length: Math.ceil(suggestedDestinations.length / 3) }).map((_, groupIdx) => (
+              <div key={groupIdx} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 w-full flex-shrink-0 p-4">
+                {suggestedDestinations.slice(groupIdx * 3, groupIdx * 3 + 3).map((place) => (
+                  <button
+                    key={place.name}
+                    onClick={() => handleSuggestionClick(place.name)}
+                    className="relative bg-white rounded-xl shadow hover:shadow-lg overflow-hidden group focus:outline-none"
+                  >
+                    <img
+                      src={place.imageUrl}
+                      alt={place.name}
+                      className="w-full h-40 object-cover transition-transform duration-500 group-hover:scale-110"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
+                    <div className="absolute bottom-0 p-3 w-full">
+                      <h3 className="text-white font-bold text-base leading-tight drop-shadow-md text-left">
+                        {place.name}
+                      </h3>
+                    </div>
+                  </button>
+                ))}
+              </div>
             ))}
           </div>
         </div>
