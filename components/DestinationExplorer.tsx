@@ -65,65 +65,6 @@ const DestinationInfoDisplay: React.FC<{ info: DestinationInfo; itinerary: strin
 );
 
 //
-// Extra Insights Section
-//
-const ExtraTravelInfo: React.FC<{ destination: string; onGenerateItinerary: () => void; loading: boolean }> = ({
-  destination,
-  onGenerateItinerary,
-  loading,
-}) => (
-  <div className="bg-stone-50 p-6 rounded-xl shadow-inner mt-6">
-    <h3 className="text-xl font-bold text-cyan-800 mb-4">More Travel Insights</h3>
-
-    {/* Quick Stats */}
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-      <div className="bg-white rounded-lg shadow p-3">
-        <p className="text-lg font-bold text-cyan-600">₹₹</p>
-        <p className="text-xs text-stone-500">Budget Level</p>
-      </div>
-      <div className="bg-white rounded-lg shadow p-3">
-        <p className="text-lg font-bold text-cyan-600">🌍</p>
-        <p className="text-xs text-stone-500">Popular with Backpackers</p>
-      </div>
-      <div className="bg-white rounded-lg shadow p-3">
-        <p className="text-lg font-bold text-cyan-600">🍜</p>
-        <p className="text-xs text-stone-500">Famous Food</p>
-      </div>
-      <div className="bg-white rounded-lg shadow p-3">
-        <p className="text-lg font-bold text-cyan-600">📸</p>
-        <p className="text-xs text-stone-500">Instagram Hotspot</p>
-      </div>
-    </div>
-
-    {/* Nearby Suggestions */}
-    <div className="mt-6">
-      <h4 className="text-lg font-semibold text-stone-700 mb-2">Nearby Destinations</h4>
-      <div className="flex gap-3 overflow-x-auto pb-2">
-        {["Seoul", "Osaka", "Phuket", "Milan"].map((city) => (
-          <span
-            key={city}
-            className="bg-cyan-100 text-cyan-800 px-3 py-1 rounded-full text-sm cursor-pointer hover:bg-cyan-200"
-          >
-            {city}
-          </span>
-        ))}
-      </div>
-    </div>
-
-    {/* Itinerary Generator Button */}
-    <div className="mt-6">
-      <button
-        onClick={onGenerateItinerary}
-        disabled={loading}
-        className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 disabled:bg-stone-400"
-      >
-        {loading ? "Generating..." : `Generate AI Itinerary for ${destination}`}
-      </button>
-    </div>
-  </div>
-);
-
-//
 // Main Component
 //
 const DestinationExplorer: React.FC = () => {
@@ -131,7 +72,6 @@ const DestinationExplorer: React.FC = () => {
   const [info, setInfo] = useState<DestinationInfo | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [itinerary, setItinerary] = useState<string[] | null>(null);
-  const [loadingItinerary, setLoadingItinerary] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cache, setCache] = useState<Record<string, DestinationInfo>>({});
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -190,14 +130,11 @@ const DestinationExplorer: React.FC = () => {
   // Generate AI Itinerary
   const handleGenerateItinerary = async () => {
     if (!destination) return;
-    setLoadingItinerary(true);
     try {
       const result = await getItinerary(destination);
       setItinerary(result.itinerary || []);
     } catch {
       setItinerary(["❌ Could not generate itinerary. Try again."]);
-    } finally {
-      setLoadingItinerary(false);
     }
   };
 
@@ -276,16 +213,7 @@ const DestinationExplorer: React.FC = () => {
       <div className="mt-6">
         {isLoading && <LoadingSpinner message="Generating travel guide..." />}
         {error && <div className="text-center p-4 bg-red-100 text-red-700 rounded-md">{error}</div>}
-        {info && (
-          <>
-            <DestinationInfoDisplay info={info} itinerary={itinerary} />
-            <ExtraTravelInfo
-              destination={info.destinationName}
-              onGenerateItinerary={handleGenerateItinerary}
-              loading={loadingItinerary}
-            />
-          </>
-        )}
+        {info && <DestinationInfoDisplay info={info} itinerary={itinerary} />}
       </div>
     </div>
   );
