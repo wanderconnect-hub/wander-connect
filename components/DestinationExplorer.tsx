@@ -16,7 +16,13 @@ const suggestedDestinations = [
   { name: "Santorini, Greece", imageUrl: "https://images.unsplash.com/photo-1560953937-4b9671a59207?w=400&q=80" },
 ];
 
-const DestinationInfoDisplay: React.FC<{ info: DestinationInfo }> = ({ info }) => (
+//
+// Destination Info Section
+//
+const DestinationInfoDisplay: React.FC<{ info: DestinationInfo; itinerary: string[] | null }> = ({
+  info,
+  itinerary,
+}) => (
   <div className="bg-white p-6 rounded-xl shadow-md border border-stone-200/80 mt-8 animate-fade-in">
     <h2 className="text-3xl font-bold text-cyan-800">{info.destinationName}</h2>
     <p className="mt-4 text-stone-600 leading-relaxed">{info.summary}</p>
@@ -43,87 +49,89 @@ const DestinationInfoDisplay: React.FC<{ info: DestinationInfo }> = ({ info }) =
       <h3 className="text-lg font-semibold text-cyan-900">Best Time to Visit</h3>
       <p className="text-cyan-800">{info.bestTimeToVisit}</p>
     </div>
+
+    {/* AI-generated itinerary */}
+    {itinerary && (
+      <div className="mt-6">
+        <h3 className="text-xl font-semibold text-cyan-700 mb-2">AI-Generated 3-Day Itinerary</h3>
+        <ul className="list-disc list-inside space-y-1 text-stone-600">
+          {itinerary.map((day, i) => (
+            <li key={i}>{day}</li>
+          ))}
+        </ul>
+      </div>
+    )}
   </div>
 );
 
-const ExtraTravelInfo: React.FC<{ destination: string }> = ({ destination }) => {
-  const [itinerary, setItinerary] = useState<string | null>(null);
-  const [loadingItinerary, setLoadingItinerary] = useState(false);
+//
+// Extra Insights Section
+//
+const ExtraTravelInfo: React.FC<{ destination: string; onGenerateItinerary: () => void; loading: boolean }> = ({
+  destination,
+  onGenerateItinerary,
+  loading,
+}) => (
+  <div className="bg-stone-50 p-6 rounded-xl shadow-inner mt-6">
+    <h3 className="text-xl font-bold text-cyan-800 mb-4">More Travel Insights</h3>
 
-  const handleItinerary = async () => {
-    setLoadingItinerary(true);
-    try {
-      const result = await getItinerary(destination);
-      setItinerary(result);
-    } catch {
-      setItinerary("❌ Could not generate itinerary. Try again.");
-    } finally {
-      setLoadingItinerary(false);
-    }
-  };
-
-  return (
-    <div className="bg-stone-50 p-6 rounded-xl shadow-inner mt-6">
-      <h3 className="text-xl font-bold text-cyan-800 mb-4">More Travel Insights</h3>
-
-      {/* Quick Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-        <div className="bg-white rounded-lg shadow p-3">
-          <p className="text-lg font-bold text-cyan-600">₹₹</p>
-          <p className="text-xs text-stone-500">Budget Level</p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-3">
-          <p className="text-lg font-bold text-cyan-600">🌍</p>
-          <p className="text-xs text-stone-500">Popular with Backpackers</p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-3">
-          <p className="text-lg font-bold text-cyan-600">🍜</p>
-          <p className="text-xs text-stone-500">Famous Food</p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-3">
-          <p className="text-lg font-bold text-cyan-600">📸</p>
-          <p className="text-xs text-stone-500">Instagram Hotspot</p>
-        </div>
+    {/* Quick Stats */}
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+      <div className="bg-white rounded-lg shadow p-3">
+        <p className="text-lg font-bold text-cyan-600">₹₹</p>
+        <p className="text-xs text-stone-500">Budget Level</p>
       </div>
-
-      {/* Nearby Suggestions */}
-      <div className="mt-6">
-        <h4 className="text-lg font-semibold text-stone-700 mb-2">Nearby Destinations</h4>
-        <div className="flex gap-3 overflow-x-auto pb-2">
-          {["Seoul", "Osaka", "Phuket", "Milan"].map((city) => (
-            <span
-              key={city}
-              className="bg-cyan-100 text-cyan-800 px-3 py-1 rounded-full text-sm cursor-pointer hover:bg-cyan-200"
-            >
-              {city}
-            </span>
-          ))}
-        </div>
+      <div className="bg-white rounded-lg shadow p-3">
+        <p className="text-lg font-bold text-cyan-600">🌍</p>
+        <p className="text-xs text-stone-500">Popular with Backpackers</p>
       </div>
-
-      {/* AI Itinerary Generator */}
-      <div className="mt-6">
-        <button
-          onClick={handleItinerary}
-          disabled={loadingItinerary}
-          className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 disabled:bg-stone-400"
-        >
-          {loadingItinerary ? "Generating..." : `Generate 3-Day Itinerary for ${destination}`}
-        </button>
-        {itinerary && (
-          <pre className="mt-4 bg-white p-4 rounded-lg text-sm text-stone-700 whitespace-pre-wrap shadow">
-            {itinerary}
-          </pre>
-        )}
+      <div className="bg-white rounded-lg shadow p-3">
+        <p className="text-lg font-bold text-cyan-600">🍜</p>
+        <p className="text-xs text-stone-500">Famous Food</p>
+      </div>
+      <div className="bg-white rounded-lg shadow p-3">
+        <p className="text-lg font-bold text-cyan-600">📸</p>
+        <p className="text-xs text-stone-500">Instagram Hotspot</p>
       </div>
     </div>
-  );
-};
 
+    {/* Nearby Suggestions */}
+    <div className="mt-6">
+      <h4 className="text-lg font-semibold text-stone-700 mb-2">Nearby Destinations</h4>
+      <div className="flex gap-3 overflow-x-auto pb-2">
+        {["Seoul", "Osaka", "Phuket", "Milan"].map((city) => (
+          <span
+            key={city}
+            className="bg-cyan-100 text-cyan-800 px-3 py-1 rounded-full text-sm cursor-pointer hover:bg-cyan-200"
+          >
+            {city}
+          </span>
+        ))}
+      </div>
+    </div>
+
+    {/* Itinerary Generator Button */}
+    <div className="mt-6">
+      <button
+        onClick={onGenerateItinerary}
+        disabled={loading}
+        className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 disabled:bg-stone-400"
+      >
+        {loading ? "Generating..." : `Generate AI Itinerary for ${destination}`}
+      </button>
+    </div>
+  </div>
+);
+
+//
+// Main Component
+//
 const DestinationExplorer: React.FC = () => {
   const [destination, setDestination] = useState("");
   const [info, setInfo] = useState<DestinationInfo | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [itinerary, setItinerary] = useState<string[] | null>(null);
+  const [loadingItinerary, setLoadingItinerary] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cache, setCache] = useState<Record<string, DestinationInfo>>({});
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -142,6 +150,7 @@ const DestinationExplorer: React.FC = () => {
       setIsLoading(true);
       setError(null);
       setInfo(null);
+      setItinerary(null);
       try {
         const destinationInfo = await getDestinationInfo(dest);
         setCache((prev) => ({ ...prev, [dest.toLowerCase()]: destinationInfo }));
@@ -172,9 +181,23 @@ const DestinationExplorer: React.FC = () => {
   useEffect(() => {
     const interval = setInterval(() => {
       nextSlide();
-    }, 5000); // auto-slide every 5 seconds
+    }, 5000);
     return () => clearInterval(interval);
   }, []);
+
+  // Generate AI Itinerary
+  const handleGenerateItinerary = async () => {
+    if (!destination) return;
+    setLoadingItinerary(true);
+    try {
+      const result = await getItinerary(destination);
+      setItinerary(result.itinerary || []);
+    } catch {
+      setItinerary(["❌ Could not generate itinerary. Try again."]);
+    } finally {
+      setLoadingItinerary(false);
+    }
+  };
 
   return (
     <div className="max-w-4xl mx-auto py-8 px-4">
@@ -183,13 +206,16 @@ const DestinationExplorer: React.FC = () => {
         <p className="text-stone-500 mb-6">Discover your next adventure. Powered by AI.</p>
       </div>
 
-      {/* Carousel Section */}
+      {/* Carousel */}
       <div className="mb-8 relative">
         <h2 className="text-lg font-bold text-stone-600 mb-4 text-center">Top Suggestions</h2>
         <div className="relative overflow-hidden rounded-xl shadow-lg">
           <div
             className="flex transition-transform duration-700"
-            style={{ transform: `translateX(-${currentIndex * 100}%)`, width: `${suggestedDestinations.length * 100}%` }}
+            style={{
+              transform: `translateX(-${currentIndex * 100}%)`,
+              width: `${suggestedDestinations.length * 100}%`,
+            }}
           >
             {suggestedDestinations.map((place) => (
               <button
@@ -223,7 +249,7 @@ const DestinationExplorer: React.FC = () => {
         </button>
       </div>
 
-      {/* Search Form */}
+      {/* Search */}
       <form onSubmit={handleSubmit} className="flex gap-2">
         <input
           type="text"
@@ -241,14 +267,18 @@ const DestinationExplorer: React.FC = () => {
         </button>
       </form>
 
-      {/* Destination Info */}
+      {/* Info */}
       <div className="mt-6">
         {isLoading && <LoadingSpinner message="Generating travel guide..." />}
         {error && <div className="text-center p-4 bg-red-100 text-red-700 rounded-md">{error}</div>}
         {info && (
           <>
-            <DestinationInfoDisplay info={info} />
-            <ExtraTravelInfo destination={info.destinationName} />
+            <DestinationInfoDisplay info={info} itinerary={itinerary} />
+            <ExtraTravelInfo
+              destination={info.destinationName}
+              onGenerateItinerary={handleGenerateItinerary}
+              loading={loadingItinerary}
+            />
           </>
         )}
       </div>
