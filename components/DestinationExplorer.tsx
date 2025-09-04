@@ -202,7 +202,7 @@ const DestinationExplorer: React.FC = () => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto py-8 px-4">
+    <div className="max-w-4xl mx-auto py-8 px-4">
       <div className="text-center">
         <h1 className="text-3xl font-bold text-cyan-700 mb-2">Destination Explorer</h1>
         <p className="text-stone-500 mb-6">Discover your next adventure. Powered by AI.</p>
@@ -222,27 +222,29 @@ const DestinationExplorer: React.FC = () => {
             {Array.from({ length: groups }).map((_, groupIdx) => (
               <div
                 key={groupIdx}
-                className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 w-full flex-shrink-0 p-4"
+                className="w-full flex flex-shrink-0 justify-center gap-4 px-4"
               >
-                {suggestedDestinations.slice(groupIdx * 3, groupIdx * 3 + 3).map((place) => (
-                  <button
-                    key={place.name}
-                    onClick={() => handleSuggestionClick(place.name)}
-                    className="relative bg-white rounded-xl shadow hover:shadow-lg overflow-hidden group focus:outline-none"
-                  >
-                    <img
-                      src={place.imageUrl}
-                      alt={place.name}
-                      className="w-full h-40 object-cover transition-transform duration-500 group-hover:scale-110"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
-                    <div className="absolute bottom-0 p-3 w-full">
-                      <h3 className="text-white font-bold text-base leading-tight drop-shadow-md text-left">
-                        {place.name}
-                      </h3>
-                    </div>
-                  </button>
-                ))}
+                {suggestedDestinations
+                  .slice(groupIdx * 3, groupIdx * 3 + 3)
+                  .map((place) => (
+                    <button
+                      key={place.name}
+                      onClick={() => handleSuggestionClick(place.name)}
+                      className="relative w-1/3 bg-white rounded-xl shadow hover:shadow-lg overflow-hidden group focus:outline-none"
+                    >
+                      <img
+                        src={place.imageUrl}
+                        alt={place.name}
+                        className="w-full h-40 object-cover transition-transform duration-500 group-hover:scale-110"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
+                      <div className="absolute bottom-0 p-3 w-full">
+                        <h3 className="text-white font-bold text-base leading-tight drop-shadow-md text-left">
+                          {place.name}
+                        </h3>
+                      </div>
+                    </button>
+                  ))}
               </div>
             ))}
           </div>
