@@ -136,6 +136,8 @@ const DestinationExplorer: React.FC = () => {
   const [cache, setCache] = useState<Record<string, DestinationInfo>>({});
   const [currentIndex, setCurrentIndex] = useState(0);
 
+  const groups = Math.ceil(suggestedDestinations.length / 3);
+
   const fetchDestinationInfo = useCallback(
     async (dest: string) => {
       if (!dest) return;
@@ -175,7 +177,7 @@ const DestinationExplorer: React.FC = () => {
   };
 
   const nextSlide = () => {
-    setCurrentIndex((prevIndex) => (prevIndex + 1) % Math.ceil(suggestedDestinations.length / 3));
+    setCurrentIndex((prevIndex) => (prevIndex + 1) % groups);
   };
 
   useEffect(() => {
@@ -183,7 +185,7 @@ const DestinationExplorer: React.FC = () => {
       nextSlide();
     }, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [groups]);
 
   // Generate AI Itinerary
   const handleGenerateItinerary = async () => {
@@ -206,7 +208,7 @@ const DestinationExplorer: React.FC = () => {
         <p className="text-stone-500 mb-6">Discover your next adventure. Powered by AI.</p>
       </div>
 
-      {/* Carousel FIXED: group cards */}
+      {/* Carousel */}
       <div className="mb-8 relative">
         <h2 className="text-lg font-bold text-stone-600 mb-4 text-center">Top Suggestions</h2>
         <div className="relative overflow-hidden rounded-xl shadow-lg">
@@ -214,10 +216,10 @@ const DestinationExplorer: React.FC = () => {
             className="flex transition-transform duration-700"
             style={{
               transform: `translateX(-${currentIndex * 100}%)`,
-              width: `${Math.ceil(suggestedDestinations.length / 3) * 100}%`,
+              width: `${groups * 100}%`,
             }}
           >
-            {Array.from({ length: Math.ceil(suggestedDestinations.length / 3) }).map((_, groupIdx) => (
+            {Array.from({ length: groups }).map((_, groupIdx) => (
               <div key={groupIdx} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 w-full flex-shrink-0 p-4">
                 {suggestedDestinations.slice(groupIdx * 3, groupIdx * 3 + 3).map((place) => (
                   <button
