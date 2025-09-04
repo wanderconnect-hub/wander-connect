@@ -1,6 +1,6 @@
 // File: services/geminiService.ts - FINAL CORRECTED & SECURE VERSION
 import type { DestinationInfo, User, MatchResult, MatchmakingPreferences } from '../types';
-import { fetchWithAuth } from './apiService';
+import { fetchWithAuth } from './apiServices';
 
 //
 // FUNCTION 1: For the Destination Explorer page
