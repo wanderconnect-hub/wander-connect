@@ -1,19 +1,19 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useMemo } from "react";
 import { getDestinationInfo, getItinerary } from "../services/geminiService";
 import type { DestinationInfo } from "../types";
 import LoadingSpinner from "./LoadingSpinner";
 
 const suggestedDestinations = [
-  { name: "Tokyo, Japan", imageUrl: "https://images.unsplash.com/photo-1503899036084-c55cdd92da26?w=400&q=80" },
-  { name: "Paris, France", imageUrl: "https://images.unsplash.com/photo-1522093007474-d86e9bf7ba6f?w=400&q=80" },
-  { name: "Rome, Italy", imageUrl: "https://images.unsplash.com/photo-1515542622106-78bda8ba0e5b?w=400&q=80" },
-  { name: "Bali, Indonesia", imageUrl: "https://images.unsplash.com/photo-1547291122-20248e353592?w=400&q=80" },
-  { name: "New York City, USA", imageUrl: "https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?w=400&q=80" },
-  { name: "London, UK", imageUrl: "https://images.unsplash.com/photo-1533929736458-ca588d08c8be?w=400&q=80" },
-  { name: "Bangkok, Thailand", imageUrl: "https://images.unsplash.com/photo-1563492065599-3520f775ee05?w=400&q=80" },
-  { name: "Sydney, Australia", imageUrl: "https://images.unsplash.com/photo-1506973035872-a4ec16b8e8d9?w=400&q=80" },
-  { name: "Kyoto, Japan", imageUrl: "https://images.unsplash.com/photo-1589793463308-58843a6812a6?w=400&q=80" },
-  { name: "Santorini, Greece", imageUrl: "https://images.unsplash.com/photo-1560953937-4b9671a59207?w=400&q=80" },
+  { name: "Tokyo, Japan", imageUrl: "https://images.unsplash.com/photo-1503899036084-c55cdd92da26?w=800&q=80" },
+  { name: "Paris, France", imageUrl: "https://images.unsplash.com/photo-1522093007474-d86e9bf7ba6f?w=800&q=80" },
+  { name: "Rome, Italy", imageUrl: "https://images.unsplash.com/photo-1515542622106-78bda8ba0e5b?w=800&q=80" },
+  { name: "Bali, Indonesia", imageUrl: "https://images.unsplash.com/photo-1547291122-20248e353592?w=800&q=80" },
+  { name: "New York City, USA", imageUrl: "https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?w=800&q=80" },
+  { name: "London, UK", imageUrl: "https://images.unsplash.com/photo-1533929736458-ca588d08c8be?w=800&q=80" },
+  { name: "Bangkok, Thailand", imageUrl: "https://images.unsplash.com/photo-1563492065599-3520f775ee05?w=800&q=80" },
+  { name: "Sydney, Australia", imageUrl: "https://images.unsplash.com/photo-1506973035872-a4ec16b8e8d9?w=800&q=80" },
+  { name: "Kyoto, Japan", imageUrl: "https://images.unsplash.com/photo-1589793463308-58843a6812a6?w=800&q=80" },
+  { name: "Santorini, Greece", imageUrl: "https://images.unsplash.com/photo-1560953937-4b9671a59207?w=800&q=80" },
 ];
 
 //
@@ -50,7 +50,6 @@ const DestinationInfoDisplay: React.FC<{ info: DestinationInfo; itinerary: strin
       <p className="text-cyan-800">{info.bestTimeToVisit}</p>
     </div>
 
-    {/* AI-generated itinerary */}
     {itinerary && (
       <div className="mt-6">
         <h3 className="text-xl font-semibold text-cyan-700 mb-2">AI-Generated 3-Day Itinerary</h3>
@@ -75,7 +74,6 @@ const ExtraTravelInfo: React.FC<{ destination: string; onGenerateItinerary: () =
   <div className="bg-stone-50 p-6 rounded-xl shadow-inner mt-6">
     <h3 className="text-xl font-bold text-cyan-800 mb-4">More Travel Insights</h3>
 
-    {/* Quick Stats */}
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
       <div className="bg-white rounded-lg shadow p-3">
         <p className="text-lg font-bold text-cyan-600">₹₹</p>
@@ -95,7 +93,6 @@ const ExtraTravelInfo: React.FC<{ destination: string; onGenerateItinerary: () =
       </div>
     </div>
 
-    {/* Nearby Suggestions */}
     <div className="mt-6">
       <h4 className="text-lg font-semibold text-stone-700 mb-2">Nearby Destinations</h4>
       <div className="flex gap-3 overflow-x-auto pb-2">
@@ -110,7 +107,6 @@ const ExtraTravelInfo: React.FC<{ destination: string; onGenerateItinerary: () =
       </div>
     </div>
 
-    {/* Itinerary Generator Button */}
     <div className="mt-6">
       <button
         onClick={onGenerateItinerary}
@@ -136,7 +132,14 @@ const DestinationExplorer: React.FC = () => {
   const [cache, setCache] = useState<Record<string, DestinationInfo>>({});
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  const groups = Math.ceil(suggestedDestinations.length / 3);
+  // Build slides as explicit chunks of 3 so each slide *must* contain three cards
+  const slides = useMemo(() => {
+    const out: typeof suggestedDestinations[] = [];
+    for (let i = 0; i < suggestedDestinations.length; i += 3) {
+      out.push(suggestedDestinations.slice(i, i + 3));
+    }
+    return out;
+  }, []);
 
   const fetchDestinationInfo = useCallback(
     async (dest: string) => {
@@ -177,17 +180,17 @@ const DestinationExplorer: React.FC = () => {
   };
 
   const nextSlide = () => {
-    setCurrentIndex((prevIndex) => (prevIndex + 1) % groups);
+    setCurrentIndex((prev) => (prev + 1) % slides.length);
+  };
+  const prevSlide = () => {
+    setCurrentIndex((prev) => (prev - 1 + slides.length) % slides.length);
   };
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      nextSlide();
-    }, 5000);
+    const interval = setInterval(nextSlide, 5000);
     return () => clearInterval(interval);
-  }, [groups]);
+  }, [slides.length]);
 
-  // Generate AI Itinerary
   const handleGenerateItinerary = async () => {
     if (!destination) return;
     setLoadingItinerary(true);
@@ -202,61 +205,74 @@ const DestinationExplorer: React.FC = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto py-8 px-4">
+    <div className="max-w-5xl mx-auto py-8 px-4">
       <div className="text-center">
         <h1 className="text-3xl font-bold text-cyan-700 mb-2">Destination Explorer</h1>
         <p className="text-stone-500 mb-6">Discover your next adventure. Powered by AI.</p>
       </div>
 
-      {/* Carousel */}
+      {/* Carousel – 3 cards per slide, guaranteed */}
       <div className="mb-8 relative">
         <h2 className="text-lg font-bold text-stone-600 mb-4 text-center">Top Suggestions</h2>
+
         <div className="relative overflow-hidden rounded-xl shadow-lg">
           <div
             className="flex transition-transform duration-700"
             style={{
               transform: `translateX(-${currentIndex * 100}%)`,
-              width: `${groups * 100}%`,
+              width: `${slides.length * 100}%`,
             }}
           >
-            {Array.from({ length: groups }).map((_, groupIdx) => (
+            {slides.map((group, slideIdx) => (
               <div
-                key={groupIdx}
-                className="w-full flex flex-shrink-0 justify-center gap-4 px-4"
+                key={slideIdx}
+                className="w-full shrink-0 flex px-3 gap-4"
               >
-                {suggestedDestinations
-                  .slice(groupIdx * 3, groupIdx * 3 + 3)
-                  .map((place) => (
-                    <button
-                      key={place.name}
-                      onClick={() => handleSuggestionClick(place.name)}
-                      className="relative w-1/3 bg-white rounded-xl shadow hover:shadow-lg overflow-hidden group focus:outline-none"
-                    >
-                      <img
-                        src={place.imageUrl}
-                        alt={place.name}
-                        className="w-full h-40 object-cover transition-transform duration-500 group-hover:scale-110"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
-                      <div className="absolute bottom-0 p-3 w-full">
-                        <h3 className="text-white font-bold text-base leading-tight drop-shadow-md text-left">
-                          {place.name}
-                        </h3>
-                      </div>
-                    </button>
+                {group.map((place) => (
+                  <button
+                    key={place.name}
+                    onClick={() => handleSuggestionClick(place.name)}
+                    className="flex-1 relative bg-white rounded-xl shadow hover:shadow-lg overflow-hidden group focus:outline-none"
+                    aria-label={`Explore ${place.name}`}
+                  >
+                    <img
+                      src={place.imageUrl}
+                      alt={place.name}
+                      className="w-full h-40 object-cover transition-transform duration-500 group-hover:scale-110"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
+                    <div className="absolute bottom-0 p-3 w-full">
+                      <h3 className="text-white font-bold text-base leading-tight drop-shadow-md text-left">
+                        {place.name}
+                      </h3>
+                    </div>
+                  </button>
+                ))}
+                {/* If the last slide has < 3 items, add invisible fillers so layout stays 3-wide */}
+                {group.length < 3 &&
+                  Array.from({ length: 3 - group.length }).map((_, i) => (
+                    <div key={`filler-${i}`} className="flex-1" />
                   ))}
               </div>
             ))}
           </div>
-        </div>
 
-        {/* Next Button */}
-        <button
-          onClick={nextSlide}
-          className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-cyan-600 text-white px-3 py-2 rounded-full shadow-md hover:bg-cyan-700"
-        >
-          ▶
-        </button>
+          {/* Prev / Next controls */}
+          <button
+            onClick={prevSlide}
+            className="absolute left-2 top-1/2 -translate-y-1/2 bg-cyan-600 text-white px-3 py-2 rounded-full shadow-md hover:bg-cyan-700"
+            aria-label="Previous"
+          >
+            ◀
+          </button>
+          <button
+            onClick={nextSlide}
+            className="absolute right-2 top-1/2 -translate-y-1/2 bg-cyan-600 text-white px-3 py-2 rounded-full shadow-md hover:bg-cyan-700"
+            aria-label="Next"
+          >
+            ▶
+          </button>
+        </div>
       </div>
 
       {/* Search */}
