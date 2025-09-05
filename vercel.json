@@ -1,4 +1,16 @@
 {
+  "version": 2,
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": { 
+        "distDir": "dist", 
+        "buildCommand": "npm run build" 
+      }
+    }
+  ],
+  "framework": "vite",
   "rewrites": [
     { "source": "/api/auth", "destination": "/api/auth.js" },
     { "source": "/api/comments", "destination": "/api/comments.js" },
