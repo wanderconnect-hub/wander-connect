@@ -1,315 +1,867 @@
-import React, { useState, useCallback, useEffect, useMemo } from "react";
-import { getDestinationInfo, getItinerary } from "../services/geminiService";
-import type { DestinationInfo } from "../types";
-import LoadingSpinner from "./LoadingSpinner";
+<!DOCTYPE html>
+<html lang="en">
 
-const suggestedDestinations = [
-  { name: "Tokyo, Japan", imageUrl: "https://images.unsplash.com/photo-1503899036084-c55cdd92da26?w=800&q=80" },
-  { name: "Paris, France", imageUrl: "https://images.unsplash.com/photo-1522093007474-d86e9bf7ba6f?w=800&q=80" },
-  { name: "Rome, Italy", imageUrl: "https://images.unsplash.com/photo-1515542622106-78bda8ba0e5b?w=800&q=80" },
-  { name: "Bali, Indonesia", imageUrl: "https://images.unsplash.com/photo-1547291122-20248e353592?w=800&q=80" },
-  { name: "New York City, USA", imageUrl: "https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?w=800&q=80" },
-  { name: "London, UK", imageUrl: "https://images.unsplash.com/photo-1533929736458-ca588d08c8be?w=800&q=80" },
-  { name: "Bangkok, Thailand", imageUrl: "https://images.unsplash.com/photo-1563492065599-3520f775ee05?w=800&q=80" },
-  { name: "Sydney, Australia", imageUrl: "https://images.unsplash.com/photo-1506973035872-a4ec16b8e8d9?w=800&q=80" },
-  { name: "Kyoto, Japan", imageUrl: "https://images.unsplash.com/photo-1589793463308-58843a6812a6?w=800&q=80" },
-  { name: "Santorini, Greece", imageUrl: "https://images.unsplash.com/photo-1560953937-4b9671a59207?w=800&q=80" },
-];
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Destination Explorer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8f8f8;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
 
-//
-// Destination Info Section
-//
-const DestinationInfoDisplay: React.FC<{ info: DestinationInfo; itinerary: string[] | null }> = ({
-  info,
-  itinerary,
-}) => (
-  <div className="bg-white p-6 rounded-xl shadow-md border border-stone-200/80 mt-8 animate-fade-in">
-    <h2 className="text-3xl font-bold text-cyan-800">{info.destinationName}</h2>
-    <p className="mt-4 text-stone-600 leading-relaxed">{info.summary}</p>
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+            flex-grow: 1;
+        }
 
-    <div className="mt-6">
-      <h3 className="text-xl font-semibold text-stone-700 mb-2">Key Attractions</h3>
-      <ul className="list-disc list-inside space-y-1 text-stone-600">
-        {info.keyAttractions.map((item, index) => (
-          <li key={index}>{item}</li>
-        ))}
-      </ul>
-    </div>
+        .suggestion-card {
+            min-width: 250px;
+            height: 150px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+        }
 
-    <div className="mt-6">
-      <h3 className="text-xl font-semibold text-stone-700 mb-2">Cultural Tips</h3>
-      <ul className="list-disc list-inside space-y-1 text-stone-600">
-        {info.culturalTips.map((item, index) => (
-          <li key={index}>{item}</li>
-        ))}
-      </ul>
-    </div>
+        .suggestion-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
 
-    <div className="mt-6 p-4 bg-cyan-50 rounded-lg">
-      <h3 className="text-lg font-semibold text-cyan-900">Best Time to Visit</h3>
-      <p className="text-cyan-800">{info.bestTimeToVisit}</p>
-    </div>
+        .hide {
+            display: none;
+        }
 
-    {itinerary && (
-      <div className="mt-6">
-        <h3 className="text-xl font-semibold text-cyan-700 mb-2">AI-Generated 3-Day Itinerary</h3>
-        <ul className="list-disc list-inside space-y-1 text-stone-600">
-          {itinerary.map((day, i) => (
-            <li key={i}>{day}</li>
-          ))}
-        </ul>
-      </div>
-    )}
-  </div>
-);
+        /* Modal specific styles */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+        }
 
-//
-// Extra Insights Section
-//
-const ExtraTravelInfo: React.FC<{ destination: string; onGenerateItinerary: () => void; loading: boolean }> = ({
-  destination,
-  onGenerateItinerary,
-  loading,
-}) => (
-  <div className="bg-stone-50 p-6 rounded-xl shadow-inner mt-6">
-    <h3 className="text-xl font-bold text-cyan-800 mb-4">More Travel Insights</h3>
+        .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+        }
 
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-      <div className="bg-white rounded-lg shadow p-3">
-        <p className="text-lg font-bold text-cyan-600">₹₹</p>
-        <p className="text-xs text-stone-500">Budget Level</p>
-      </div>
-      <div className="bg-white rounded-lg shadow p-3">
-        <p className="text-lg font-bold text-cyan-600">🌍</p>
-        <p className="text-xs text-stone-500">Popular with Backpackers</p>
-      </div>
-      <div className="bg-white rounded-lg shadow p-3">
-        <p className="text-lg font-bold text-cyan-600">🍜</p>
-        <p className="text-xs text-stone-500">Famous Food</p>
-      </div>
-      <div className="bg-white rounded-lg shadow p-3">
-        <p className="text-lg font-bold text-cyan-600">📸</p>
-        <p className="text-xs text-stone-500">Instagram Hotspot</p>
-      </div>
-    </div>
+        .close-btn {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            cursor: pointer;
+        }
+    </style>
+</head>
 
-    <div className="mt-6">
-      <h4 className="text-lg font-semibold text-stone-700 mb-2">Nearby Destinations</h4>
-      <div className="flex gap-3 overflow-x-auto pb-2">
-        {["Seoul", "Osaka", "Phuket", "Milan"].map((city) => (
-          <span
-            key={city}
-            className="bg-cyan-100 text-cyan-800 px-3 py-1 rounded-full text-sm cursor-pointer hover:bg-cyan-200"
-          >
-            {city}
-          </span>
-        ))}
-      </div>
-    </div>
+<body class="bg-stone-50 flex flex-col items-center">
 
-    <div className="mt-6">
-      <button
-        onClick={onGenerateItinerary}
-        disabled={loading}
-        className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 disabled:bg-stone-400"
-      >
-        {loading ? "Generating..." : `Generate AI Itinerary for ${destination}`}
-      </button>
-    </div>
-  </div>
-);
+    <!-- Main Content Container -->
+    <div class="container bg-white rounded-3xl shadow-xl flex flex-col p-8 mt-12 mb-20">
 
-//
-// Main Component
-//
-const DestinationExplorer: React.FC = () => {
-  const [destination, setDestination] = useState("");
-  const [info, setInfo] = useState<DestinationInfo | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [itinerary, setItinerary] = useState<string[] | null>(null);
-  const [loadingItinerary, setLoadingItinerary] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [cache, setCache] = useState<Record<string, DestinationInfo>>({});
-  const [currentIndex, setCurrentIndex] = useState(0);
-
-  // Build slides as explicit chunks of 3 so each slide *must* contain three cards
-  const slides = useMemo(() => {
-    const out: typeof suggestedDestinations[] = [];
-    for (let i = 0; i < suggestedDestinations.length; i += 3) {
-      out.push(suggestedDestinations.slice(i, i + 3));
-    }
-    return out;
-  }, []);
-
-  const fetchDestinationInfo = useCallback(
-    async (dest: string) => {
-      if (!dest) return;
-
-      const cachedInfo = cache[dest.toLowerCase()];
-      if (cachedInfo) {
-        setInfo(cachedInfo);
-        setError(null);
-        return;
-      }
-
-      setIsLoading(true);
-      setError(null);
-      setInfo(null);
-      setItinerary(null);
-      try {
-        const destinationInfo = await getDestinationInfo(dest);
-        setCache((prev) => ({ ...prev, [dest.toLowerCase()]: destinationInfo }));
-        setInfo(destinationInfo);
-      } catch (err: any) {
-        setError(err.message || "An unknown error occurred.");
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [cache]
-  );
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    fetchDestinationInfo(destination);
-  };
-
-  const handleSuggestionClick = (suggestedDest: string) => {
-    setDestination(suggestedDest);
-    fetchDestinationInfo(suggestedDest);
-  };
-
-  const nextSlide = () => {
-    setCurrentIndex((prev) => (prev + 1) % slides.length);
-  };
-  const prevSlide = () => {
-    setCurrentIndex((prev) => (prev - 1 + slides.length) % slides.length);
-  };
-
-  useEffect(() => {
-    const interval = setInterval(nextSlide, 5000);
-    return () => clearInterval(interval);
-  }, [slides.length]);
-
-  const handleGenerateItinerary = async () => {
-    if (!destination) return;
-    setLoadingItinerary(true);
-    try {
-      const result = await getItinerary(destination);
-      setItinerary(result.itinerary || []);
-    } catch {
-      setItinerary(["❌ Could not generate itinerary. Try again."]);
-    } finally {
-      setLoadingItinerary(false);
-    }
-  };
-
-  return (
-    <div className="max-w-5xl mx-auto py-8 px-4">
-      <div className="text-center">
-        <h1 className="text-3xl font-bold text-cyan-700 mb-2">Destination Explorer</h1>
-        <p className="text-stone-500 mb-6">Discover your next adventure. Powered by AI.</p>
-      </div>
-
-      {/* Carousel – 3 cards per slide, guaranteed */}
-      <div className="mb-8 relative">
-        <h2 className="text-lg font-bold text-stone-600 mb-4 text-center">Top Suggestions</h2>
-
-        <div className="relative overflow-hidden rounded-xl shadow-lg">
-          <div
-            className="flex transition-transform duration-700"
-            style={{
-              transform: `translateX(-${currentIndex * 100}%)`,
-              width: `${slides.length * 100}%`,
-            }}
-          >
-            {slides.map((group, slideIdx) => (
-              <div
-                key={slideIdx}
-                className="w-full shrink-0 flex px-3 gap-4"
-              >
-                {group.map((place) => (
-                  <button
-                    key={place.name}
-                    onClick={() => handleSuggestionClick(place.name)}
-                    className="flex-1 relative bg-white rounded-xl shadow hover:shadow-lg overflow-hidden group focus:outline-none"
-                    aria-label={`Explore ${place.name}`}
-                  >
-                    <img
-                      src={place.imageUrl}
-                      alt={place.name}
-                      className="w-full h-40 object-cover transition-transform duration-500 group-hover:scale-110"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
-                    <div className="absolute bottom-0 p-3 w-full">
-                      <h3 className="text-white font-bold text-base leading-tight drop-shadow-md text-left">
-                        {place.name}
-                      </h3>
-                    </div>
-                  </button>
-                ))}
-                {/* If the last slide has < 3 items, add invisible fillers so layout stays 3-wide */}
-                {group.length < 3 &&
-                  Array.from({ length: 3 - group.length }).map((_, i) => (
-                    <div key={`filler-${i}`} className="flex-1" />
-                  ))}
-              </div>
-            ))}
-          </div>
-
-          {/* Prev / Next controls */}
-          <button
-            onClick={prevSlide}
-            className="absolute left-2 top-1/2 -translate-y-1/2 bg-cyan-600 text-white px-3 py-2 rounded-full shadow-md hover:bg-cyan-700"
-            aria-label="Previous"
-          >
-            ◀
-          </button>
-          <button
-            onClick={nextSlide}
-            className="absolute right-2 top-1/2 -translate-y-1/2 bg-cyan-600 text-white px-3 py-2 rounded-full shadow-md hover:bg-cyan-700"
-            aria-label="Next"
-          >
-            ▶
-          </button>
+        <!-- Header Section -->
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-extrabold text-stone-900 tracking-tight">Voyage</h1>
+            <p class="mt-2 text-stone-500 text-sm">Discover your next luxury adventure.</p>
         </div>
-      </div>
 
-      {/* Search */}
-      <form onSubmit={handleSubmit} className="flex gap-2">
-        <input
-          type="text"
-          value={destination}
-          onChange={(e) => setDestination(e.target.value)}
-          placeholder="Or enter a city or place..."
-          className="flex-grow px-4 py-3 bg-white border border-stone-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
-        />
-        <button
-          type="submit"
-          disabled={isLoading || !destination.trim()}
-          className="bg-cyan-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-cyan-700 transition-colors disabled:bg-stone-400"
-        >
-          Explore
-        </button>
-      </form>
+        <!-- Search Bar Section -->
+        <div class="w-full relative mb-8">
+            <div
+                class="flex items-center space-x-3 p-4 bg-white border border-stone-200 rounded-full shadow-inner transition-all duration-300 focus-within:shadow-lg focus-within:border-stone-400">
+                <i class="fas fa-search text-stone-400 pl-2"></i>
+                <input type="text" id="searchInput"
+                    class="flex-1 bg-transparent outline-none placeholder-stone-400 text-stone-800 font-medium"
+                    placeholder="Search for a city or place..." autocomplete="off">
+            </div>
 
-      {/* Info */}
-      <div className="mt-6">
-        {isLoading && <LoadingSpinner message="Generating travel guide..." />}
-        {error && <div className="text-center p-4 bg-red-100 text-red-700 rounded-md">{error}</div>}
-        {info && (
-          <>
-            <DestinationInfoDisplay info={info} itinerary={itinerary} />
-            <ExtraTravelInfo
-              destination={info.destinationName}
-              onGenerateItinerary={handleGenerateItinerary}
-              loading={loadingItinerary}
-            />
-          </>
-        )}
-      </div>
+            <!-- Autocomplete Suggestions -->
+            <div id="autocomplete-results"
+                class="hide absolute w-full mt-2 bg-white rounded-xl shadow-lg border border-stone-200 z-10 max-h-60 overflow-y-auto">
+            </div>
+        </div>
+
+        <!-- Explore by Interest Section -->
+        <div class="w-full mb-8">
+            <h2 class="text-xl font-semibold text-stone-700 mb-4">Explore by Interest</h2>
+            <div class="flex gap-3 overflow-x-auto py-2 scrollbar-hide">
+                <button data-filter="all"
+                    class="filter-btn bg-stone-200 text-stone-800 px-5 py-2 rounded-full transition-all duration-200 hover:bg-stone-300">All</button>
+                <button data-filter="adventure"
+                    class="filter-btn bg-stone-200 text-stone-800 px-5 py-2 rounded-full transition-all duration-200 hover:bg-stone-300">Adventure</button>
+                <button data-filter="culture"
+                    class="filter-btn bg-stone-200 text-stone-800 px-5 py-2 rounded-full transition-all duration-200 hover:bg-stone-300">Culture</button>
+                <button data-filter="relax"
+                    class="filter-btn bg-stone-200 text-stone-800 px-5 py-2 rounded-full transition-all duration-200 hover:bg-stone-300">Relaxing</button>
+                <button data-filter="city-break"
+                    class="filter-btn bg-stone-200 text-stone-800 px-5 py-2 rounded-full transition-all duration-200 hover:bg-stone-300">City Break</button>
+                <button id="locationBtn" data-filter="local"
+                    class="filter-btn bg-stone-200 text-stone-800 px-5 py-2 rounded-full transition-all duration-200 hover:bg-stone-300">Explore by Location</button>
+            </div>
+        </div>
+
+        <!-- Top Suggestions Section -->
+        <div id="suggestions-section" class="w-full mb-8">
+            <h2 class="text-xl font-semibold text-stone-700 mb-4">Top Suggestions</h2>
+            <!-- Wrapper for the scrollable list and navigation buttons -->
+            <div class="relative">
+                <!-- Previous Button -->
+                <button id="prevBtn"
+                    class="absolute left-0 top-1/2 -translate-y-1/2 bg-white/70 backdrop-blur-sm p-3 rounded-full shadow-lg z-10 transition-opacity hover:opacity-100 opacity-80">
+                    <i class="fas fa-chevron-left text-stone-600"></i>
+                </button>
+                <div id="suggestion-list"
+                    class="flex overflow-x-auto gap-4 py-2 scrollbar-hide snap-x snap-mandatory">
+                    <!-- Suggestion cards will be injected here by JS -->
+                </div>
+                <!-- Next Button -->
+                <button id="nextBtn"
+                    class="absolute right-0 top-1/2 -translate-y-1/2 bg-white/70 backdrop-blur-sm p-3 rounded-full shadow-lg z-10 transition-opacity hover:opacity-100 opacity-80">
+                    <i class="fas fa-chevron-right text-stone-600"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- My Trips Section -->
+        <div id="trips-section" class="w-full mb-8 hide">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold text-stone-700">My Trips</h2>
+                <button id="createTripBtn"
+                    class="bg-green-500 text-white font-medium py-1 px-4 rounded-full shadow-lg transition-transform hover:scale-105 active:scale-95">
+                    New Trip
+                </button>
+            </div>
+            <div id="trips-list" class="flex overflow-x-auto gap-4 py-2 scrollbar-hide">
+                <!-- Trip cards will be injected here by JS -->
+            </div>
+        </div>
+
+        <!-- My Favorites Section -->
+        <div id="favorites-section" class="w-full mb-8 hide">
+            <h2 class="text-xl font-semibold text-stone-700 mb-4">My Favorites</h2>
+            <div id="favorites-list" class="flex overflow-x-auto gap-4 py-2 scrollbar-hide snap-x snap-mandatory">
+                <!-- Favorites cards will be injected here by JS -->
+            </div>
+        </div>
+
+        <!-- Community Favorites Section -->
+        <div id="community-favorites-section" class="w-full mb-8 hide">
+            <h2 class="text-xl font-semibold text-stone-700 mb-4">Community Favorites</h2>
+            <div id="community-favorites-list"
+                class="flex overflow-x-auto gap-4 py-2 scrollbar-hide snap-x snap-mandatory">
+                <!-- Community favorites cards will be injected here by JS -->
+            </div>
+        </div>
+
+        <!-- Recently Viewed Section -->
+        <div id="recently-viewed-section" class="w-full mb-8 hide">
+            <h2 class="text-xl font-semibold text-stone-700 mb-4">Recently Viewed</h2>
+            <div id="recently-viewed-list" class="flex overflow-x-auto gap-4 py-2 scrollbar-hide snap-x snap-mandatory">
+                <!-- Recently viewed cards will be injected here by JS -->
+            </div>
+        </div>
+
+        <!-- AI-Powered Prompt Section -->
+        <div class="w-full p-6 bg-amber-50 rounded-2xl border border-amber-200 flex flex-col items-center text-center">
+            <i class="fas fa-magic text-amber-500 text-3xl mb-3"></i>
+            <h3 class="text-lg font-semibold text-amber-800 mb-1">Feeling Adventurous?</h3>
+            <p class="text-sm text-amber-600 mb-4">Let our AI generate a personalized travel guide for you!</p>
+            <button id="surpriseMeBtn"
+                class="bg-amber-500 text-white font-medium py-2 px-6 rounded-full shadow-lg transition-transform hover:scale-105 active:scale-95">
+                ✨ Generate Guide
+            </button>
+        </div>
+
+        <!-- Loading Indicator and Message -->
+        <div id="loadingIndicator" class="hide mt-8 text-center">
+            <i class="fas fa-spinner fa-spin text-stone-500 text-2xl"></i>
+            <p id="loading-message" class="mt-2 text-stone-500">Generating your next adventure...</p>
+        </div>
+
+        <!-- Result Display Section -->
+        <div id="result-display" class="hide mt-8 p-6 bg-stone-50 rounded-2xl border border-stone-200">
+            <h2 class="text-xl font-semibold text-stone-700 mb-4">Your Search Results</h2>
+            <!-- Results will be injected here -->
+        </div>
+
     </div>
-  );
-};
 
-export default DestinationExplorer;
+    <!-- Modal for adding to a trip -->
+    <div id="trip-modal" class="modal hide">
+        <div class="modal-content">
+            <span id="close-modal-btn" class="close-btn text-stone-400 hover:text-stone-700 text-2xl">
+                <i class="fas fa-times"></i>
+            </span>
+            <h3 class="text-2xl font-semibold text-stone-800 mb-6">Add to a Trip</h3>
+            <div id="trip-list-modal" class="space-y-4">
+                <!-- Trips will be listed here -->
+            </div>
+            <div class="mt-6 border-t border-stone-200 pt-4">
+                <input type="text" id="new-trip-input"
+                    class="w-full p-3 border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    placeholder="Create a new trip...">
+                <button id="create-trip-modal-btn"
+                    class="w-full mt-2 bg-green-500 text-white font-medium py-3 rounded-lg hover:bg-green-600 transition-colors">
+                    Create and Add
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation Bar -->
+    <div
+        class="fixed bottom-0 left-0 w-full bg-white border-t border-stone-200 shadow-lg flex justify-around items-center h-16">
+        <a href="#" class="flex flex-col items-center text-stone-400 hover:text-amber-500 transition-colors">
+            <i class="fas fa-home text-lg"></i>
+            <span class="text-xs mt-1">Home</span>
+        </a>
+        <a href="#" class="flex flex-col items-center text-stone-400 hover:text-amber-500 transition-colors">
+            <i class="fas fa-heart text-lg"></i>
+            <span class="text-xs mt-1">Match</span>
+        </a>
+        <a href="#" class="flex flex-col items-center text-amber-500 transition-colors">
+            <i class="fas fa-compass text-lg"></i>
+            <span class="text-xs mt-1">Explore</span>
+        </a>
+        <a href="#" class="flex flex-col items-center text-stone-400 hover:text-amber-500 transition-colors">
+            <i class="fas fa-user-circle text-lg"></i>
+            <span class="text-xs mt-1">Profile</span>
+        </a>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, deleteDoc, onSnapshot, collection, query, getDocs, addDoc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        // Helper function to show a temporary message
+        function showMessage(message, type = 'success') {
+            const resultDisplay = document.getElementById('result-display');
+            resultDisplay.classList.remove('hide');
+            resultDisplay.innerHTML = `
+                <div class="text-center p-4 rounded-xl ${type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+                    <p class="font-medium">${message}</p>
+                </div>
+            `;
+            setTimeout(() => {
+                resultDisplay.classList.add('hide');
+            }, 3000);
+        }
+
+        // --- Data Mockup (In a real app, this would come from an API) ---
+        const destinations = [
+            { id: "tokyo-jp", name: "Tokyo, Japan", image: "https://via.placeholder.com/400x300/f5f5f4/44403c?text=Tokyo", description: "Vibrant city blending tradition and technology.", tags: ["city-break", "culture"], lat: 35.6895, lon: 139.6917 },
+            { id: "paris-fr", name: "Paris, France", image: "https://via.placeholder.com/400x300/f8fafc/64748b?text=Paris", description: "City of lights, art, and romance.", tags: ["city-break", "culture", "relax"], lat: 48.8566, lon: 2.3522 },
+            { id: "ny-usa", name: "New York, USA", image: "https://via.placeholder.com/400x300/fafaf9/78716c?text=New+York", description: "The city that never sleeps.", tags: ["city-break", "adventure"], lat: 40.7128, lon: -74.0060 },
+            { id: "bora-bora-pf", name: "Bora Bora, French Polynesia", image: "https://via.placeholder.com/400x300/f0f9ff/0c4a6e?text=Bora+Bora", description: "Stunning beaches and turquoise waters.", tags: ["relax", "adventure"], lat: -16.5004, lon: -151.7415 },
+            { id: "cairo-eg", name: "Cairo, Egypt", image: "https://via.placeholder.com/400x300/fff7ed/7c2d12?text=Cairo", description: "Home to ancient pyramids and rich history.", tags: ["culture", "adventure"], lat: 30.0444, lon: 31.2357 },
+            { id: "chandigarh-in", name: "Chandigarh, India", image: "https://via.placeholder.com/400x300/d6e9f2/3a6e8f?text=Chandigarh", description: "A modern city known for its architecture and urban design.", tags: ["city-break", "culture"], lat: 30.7333, lon: 76.7794 },
+            { id: "jaipur-in", name: "Jaipur, India", image: "https://via.placeholder.com/400x300/f5e0e0/8a2e2e?text=Jaipur", description: "The 'Pink City' is a cultural and historical gem.", tags: ["culture"], lat: 26.9124, lon: 75.7873 },
+        ];
+
+        // --- DOM Elements ---
+        const searchInput = document.getElementById('searchInput');
+        const autocompleteResults = document.getElementById('autocomplete-results');
+        const suggestionList = document.getElementById('suggestion-list');
+        const recentlyViewedSection = document.getElementById('recently-viewed-section');
+        const recentlyViewedList = document.getElementById('recently-viewed-list');
+        const favoritesSection = document.getElementById('favorites-section');
+        const favoritesList = document.getElementById('favorites-list');
+        const communityFavoritesSection = document.getElementById('community-favorites-section');
+        const communityFavoritesList = document.getElementById('community-favorites-list');
+        const tripsSection = document.getElementById('trips-section');
+        const tripsList = document.getElementById('trips-list');
+        const createTripBtn = document.getElementById('createTripBtn');
+        const surpriseMeBtn = document.getElementById('surpriseMeBtn');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const loadingMessage = document.getElementById('loading-message');
+        const resultDisplay = document.getElementById('result-display');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const filterButtons = document.querySelectorAll('.filter-btn');
+        const locationBtn = document.getElementById('locationBtn');
+        const tripModal = document.getElementById('trip-modal');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+        const tripListModal = document.getElementById('trip-list-modal');
+        const newTripInput = document.getElementById('new-trip-input');
+        const createTripModalBtn = document.getElementById('create-trip-modal-btn');
+
+        const RECENTLY_VIEWED_KEY = 'voyage-recently-viewed';
+
+        // --- Firebase setup ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        let currentUserId = null;
+        let favoriteIds = new Set();
+        let communityFavorites = [];
+        let userTrips = [];
+        let destinationToAdd = null;
+
+        // Authenticate the user
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                currentUserId = user.uid;
+                listenForFavorites();
+                listenForCommunityFavorites();
+                listenForTrips();
+                renderSuggestions();
+            } else {
+                try {
+                    const token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+                    if (token) {
+                        await signInWithCustomToken(auth, token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                } catch (error) {
+                    console.error("Firebase auth error:", error);
+                }
+            }
+        });
+
+        // --- Firebase Firestore Functions ---
+
+        // Listen for a user's private favorites in real-time
+        function listenForFavorites() {
+            if (!currentUserId) return;
+            const favoritesCollection = collection(db, `artifacts/${appId}/users/${currentUserId}/favorites`);
+            onSnapshot(favoritesCollection, (snapshot) => {
+                favoriteIds.clear();
+                const favorites = [];
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    favoriteIds.add(data.id);
+                    favorites.push(data);
+                });
+                if (favorites.length > 0) {
+                    favoritesSection.classList.remove('hide');
+                    renderCards(favorites, favoritesList, true);
+                } else {
+                    favoritesSection.classList.add('hide');
+                }
+                // Rerender suggestions to update heart icons
+                const activeFilterBtn = document.querySelector('.filter-btn.bg-amber-500');
+                if (activeFilterBtn) {
+                    renderSuggestions(activeFilterBtn.dataset.filter);
+                } else {
+                    renderSuggestions();
+                }
+            }, (error) => {
+                console.error("Error fetching favorites:", error);
+            });
+        }
+
+        // Listen for public community favorites in real-time
+        function listenForCommunityFavorites() {
+            const communityFavoritesCollection = collection(db, `artifacts/${appId}/public/data/communityFavorites`);
+            onSnapshot(communityFavoritesCollection, (snapshot) => {
+                communityFavorites = [];
+                const addedDestinations = new Set(); // To avoid duplicates for display
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    if (!addedDestinations.has(data.id)) {
+                        communityFavorites.push(data);
+                        addedDestinations.add(data.id);
+                    }
+                });
+                if (communityFavorites.length > 0) {
+                    communityFavoritesSection.classList.remove('hide');
+                    renderCards(communityFavorites, communityFavoritesList, false);
+                } else {
+                    communityFavoritesSection.classList.add('hide');
+                }
+            }, (error) => {
+                console.error("Error fetching community favorites:", error);
+            });
+        }
+
+        // Listen for a user's trips in real-time
+        function listenForTrips() {
+            if (!currentUserId) return;
+            const tripsCollection = collection(db, `artifacts/${appId}/users/${currentUserId}/trips`);
+            onSnapshot(tripsCollection, (snapshot) => {
+                userTrips = [];
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    userTrips.push({ id: doc.id, ...data });
+                });
+                if (userTrips.length > 0) {
+                    tripsSection.classList.remove('hide');
+                    renderTrips(userTrips);
+                } else {
+                    tripsSection.classList.add('hide');
+                }
+            }, (error) => {
+                console.error("Error fetching trips:", error);
+            });
+        }
+        
+        // Adds or removes a destination from a user's private and public favorites
+        async function toggleFavorite(destination) {
+            if (!currentUserId) {
+                showMessage("Please log in to save favorites.", 'error');
+                return;
+            }
+            const privateDocRef = doc(db, `artifacts/${appId}/users/${currentUserId}/favorites`, destination.id);
+            const publicDocRef = doc(db, `artifacts/${appId}/public/data/communityFavorites`, `${destination.id}-${currentUserId}`);
+
+            if (favoriteIds.has(destination.id)) {
+                // Remove from private and public collections
+                await deleteDoc(privateDocRef);
+                await deleteDoc(publicDocRef);
+            } else {
+                // Add to private and public collections
+                await setDoc(privateDocRef, destination);
+                await setDoc(publicDocRef, { ...destination, userId: currentUserId, favoritedAt: Date.now() });
+            }
+        }
+        
+        // Creates a new trip document
+        async function createTrip(tripName, destination = null) {
+            if (!currentUserId) return;
+            const tripsCollection = collection(db, `artifacts/${appId}/users/${currentUserId}/trips`);
+            const destinationsArray = destination ? [destination] : [];
+            await addDoc(tripsCollection, {
+                name: tripName,
+                destinations: destinationsArray,
+                createdAt: Date.now(),
+            });
+            showMessage(`Trip "${tripName}" created successfully!`);
+        }
+        
+        // Adds a destination to an existing trip
+        async function addToTrip(tripId, destination) {
+            if (!currentUserId) return;
+            const tripDocRef = doc(db, `artifacts/${appId}/users/${currentUserId}/trips`, tripId);
+            await updateDoc(tripDocRef, {
+                destinations: arrayUnion(destination)
+            });
+            showMessage(`${destination.name} added to trip!`);
+        }
+
+        // --- Function to render suggestion cards ---
+        function renderSuggestions(filter = 'all') {
+            suggestionList.innerHTML = '';
+            let filteredDestinations;
+
+            if (filter === 'local') {
+                if (navigator.geolocation) {
+                    loadingIndicator.classList.remove('hide');
+                    navigator.geolocation.getCurrentPosition(position => {
+                        loadingIndicator.classList.add('hide');
+                        const userLat = position.coords.latitude;
+                        const userLon = position.coords.longitude;
+
+                        // Simple distance check for demo purposes
+                        filteredDestinations = destinations.filter(dest => {
+                            const distanceLat = Math.abs(userLat - dest.lat);
+                            const distanceLon = Math.abs(userLon - dest.lon);
+                            return distanceLat < 10 && distanceLon < 10;
+                        });
+
+                        if (filteredDestinations.length > 0) {
+                            renderCards(filteredDestinations, suggestionList, false);
+                        } else {
+                            showMessage("No destinations found near you.", 'error');
+                        }
+                    }, () => {
+                        loadingIndicator.classList.add('hide');
+                        showMessage("Unable to retrieve your location. Please enable location services.", 'error');
+                    });
+                } else {
+                    showMessage("Geolocation is not supported by your browser.", 'error');
+                }
+            } else {
+                filteredDestinations = destinations.filter(dest => filter === 'all' || dest.tags.includes(filter));
+                renderCards(filteredDestinations, suggestionList, false);
+            }
+        }
+
+        // --- Function to render destination cards in a specified list ---
+        function renderCards(list, container, isFavoritesList) {
+            container.innerHTML = '';
+            list.forEach(dest => {
+                const card = document.createElement('div');
+                card.className = 'suggestion-card snap-center rounded-2xl shadow-md overflow-hidden relative group';
+                const isFavorite = favoriteIds.has(dest.id);
+                card.innerHTML = `
+                    <img src="${dest.image}" alt="${dest.name}" class="absolute inset-0 w-full h-full object-cover">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-80"></div>
+                    <div class="absolute top-4 right-4 z-10 flex space-x-2">
+                        <i class="fas fa-heart text-2xl cursor-pointer transition-colors ${isFavorite ? 'text-red-500' : 'text-stone-300 hover:text-red-400'}"
+                           data-id="${dest.id}"></i>
+                        <i class="fas fa-plus-circle text-2xl cursor-pointer transition-colors text-stone-300 hover:text-blue-400"
+                           data-id="${dest.id}" data-name="${dest.name}"></i>
+                    </div>
+                    <div class="absolute bottom-4 left-4 text-white p-2">
+                        <h3 class="text-lg font-bold">${dest.name}</h3>
+                        <p class="text-sm text-gray-200 group-hover:block transition-all duration-300 hidden">${dest.description}</p>
+                    </div>
+                `;
+
+                // Add event listeners for the whole card, favorite button, and add to trip button
+                card.addEventListener('click', (e) => {
+                    if (e.target.closest('.fa-heart') || e.target.closest('.fa-plus-circle')) return;
+                    handleSearch(dest.name);
+                });
+
+                const favoriteBtn = card.querySelector('.fa-heart');
+                favoriteBtn.addEventListener('click', (e) => {
+                    e.stopPropagation(); // Stop the event from bubbling up to the card
+                    toggleFavorite(dest);
+                });
+
+                const addToTripBtn = card.querySelector('.fa-plus-circle');
+                addToTripBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    destinationToAdd = dest;
+                    openTripModal();
+                });
+
+                container.appendChild(card);
+            });
+        }
+        
+        // Renders the user's trips
+        function renderTrips(trips) {
+            tripsList.innerHTML = '';
+            trips.forEach(trip => {
+                const tripCard = document.createElement('div');
+                tripCard.className = 'bg-stone-100 p-4 rounded-xl shadow-inner min-w-[200px] cursor-pointer hover:bg-stone-200 transition-colors';
+                tripCard.innerHTML = `
+                    <h4 class="text-lg font-semibold text-stone-800">${trip.name}</h4>
+                    <p class="text-sm text-stone-500">${trip.destinations ? trip.destinations.length : 0} destinations</p>
+                    <div class="mt-2 text-xs text-stone-400">
+                        ${trip.destinations ? trip.destinations.map(d => `<span class="inline-block bg-stone-300 text-stone-700 rounded-full px-2 py-1 mr-1 mb-1">${d.name}</span>`).join('') : ''}
+                    </div>
+                `;
+                tripsList.appendChild(tripCard);
+            });
+        }
+
+        // --- Handle search logic with Gemini API integration ---
+        async function handleSearch(query) {
+            if (!query) return;
+
+            resultDisplay.classList.add('hide');
+            loadingIndicator.classList.remove('hide');
+            loadingMessage.textContent = `Generating a travel guide for ${query}...`;
+
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+            const systemPrompt = `You are an expert travel guide. Your task is to provide a concise and engaging travel guide for a given destination. Respond in JSON format only with the following schema:
+            {
+                "title": string,
+                "summary": string,
+                "attractions": string[],
+                "tips": string[]
+            }`;
+
+            const userQuery = `Provide a travel guide for ${query}.`;
+
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                tools: [{ "google_search": {} }],
+                systemInstruction: {
+                    parts: [{ text: systemPrompt }]
+                },
+                generationConfig: {
+                    responseMimeType: "application/json",
+                }
+            };
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const result = await response.json();
+                const candidate = result.candidates?.[0];
+
+                if (!candidate || !candidate.content?.parts?.[0]?.text) {
+                    throw new Error("Invalid response format from Gemini API.");
+                }
+
+                const jsonString = candidate.content.parts[0].text;
+                const guide = JSON.parse(jsonString);
+
+                loadingIndicator.classList.add('hide');
+                resultDisplay.classList.remove('hide');
+                
+                let attractionsHtml = '';
+                if (guide.attractions && Array.isArray(guide.attractions)) {
+                    attractionsHtml = `
+                        <h3 class="text-lg font-semibold text-stone-700 mb-2 mt-4">Top Attractions</h3>
+                        <ul class="list-disc list-inside space-y-1 text-stone-600">
+                            ${guide.attractions.map(item => `<li>${item}</li>`).join('')}
+                        </ul>
+                    `;
+                }
+
+                let tipsHtml = '';
+                if (guide.tips && Array.isArray(guide.tips)) {
+                    tipsHtml = `
+                        <h3 class="text-lg font-semibold text-stone-700 mb-2 mt-4">Travel Tips</h3>
+                        <ul class="list-disc list-inside space-y-1 text-stone-600">
+                            ${guide.tips.map(item => `<li>${item}</li>`).join('')}
+                        </ul>
+                    `;
+                }
+
+                resultDisplay.innerHTML = `
+                    <h2 class="text-xl font-semibold text-stone-700 mb-4">${guide.title}</h2>
+                    <div class="p-4 bg-white rounded-xl shadow-inner">
+                        <p class="text-stone-600">${guide.summary}</p>
+                        ${attractionsHtml}
+                        ${tipsHtml}
+                    </div>
+                `;
+            } catch (error) {
+                console.error("Error fetching Gemini content:", error);
+                loadingIndicator.classList.add('hide');
+                resultDisplay.classList.remove('hide');
+                resultDisplay.innerHTML = `
+                    <div class="text-center p-4 rounded-xl bg-red-100 text-red-700">
+                        <p class="font-medium">Failed to generate a guide. Please try again later.</p>
+                    </div>
+                `;
+            }
+
+            // Add the searched item to the recently viewed list
+            const dest = destinations.find(d => d.name === query);
+            if (dest) {
+                addRecentlyViewed(dest);
+            }
+        }
+
+        // --- Manage Recently Viewed destinations ---
+        function getRecentlyViewed() {
+            try {
+                const recent = localStorage.getItem(RECENTLY_VIEWED_KEY);
+                return recent ? JSON.parse(recent) : [];
+            } catch (e) {
+                console.error("Error retrieving recently viewed from localStorage", e);
+                return [];
+            }
+        }
+
+        function saveRecentlyViewed(list) {
+            try {
+                localStorage.setItem(RECENTLY_VIEWED_KEY, JSON.stringify(list));
+            } catch (e) {
+                console.error("Error saving to localStorage", e);
+            }
+        }
+
+        function addRecentlyViewed(destination) {
+            let list = getRecentlyViewed();
+            // Remove if already exists to move it to the front
+            list = list.filter(item => item.name !== destination.name);
+            list.unshift(destination); // Add to the beginning
+            list = list.slice(0, 5); // Keep only the last 5
+            saveRecentlyViewed(list);
+            renderRecentlyViewed();
+        }
+
+        function renderRecentlyViewed() {
+            const list = getRecentlyViewed();
+            if (list.length > 0) {
+                recentlyViewedSection.classList.remove('hide');
+                renderCards(list, recentlyViewedList, false);
+            } else {
+                recentlyViewedSection.classList.add('hide');
+            }
+        }
+        
+        // --- Modal functions ---
+        function openTripModal() {
+            if (!currentUserId) {
+                showMessage("Please log in to create trips.", 'error');
+                return;
+            }
+            tripModal.classList.remove('hide');
+            renderTripListModal();
+        }
+
+        function closeTripModal() {
+            tripModal.classList.add('hide');
+            destinationToAdd = null;
+            newTripInput.value = '';
+        }
+
+        function renderTripListModal() {
+            tripListModal.innerHTML = '';
+            userTrips.forEach(trip => {
+                const tripItem = document.createElement('div');
+                tripItem.className = 'p-3 bg-stone-100 rounded-lg cursor-pointer hover:bg-stone-200 transition-colors flex justify-between items-center';
+                tripItem.innerHTML = `
+                    <span class="text-stone-700">${trip.name}</span>
+                    <i class="fas fa-check text-green-500 hide"></i>
+                `;
+                tripItem.addEventListener('click', async () => {
+                    closeTripModal(); // Close immediately for responsive UI
+                    if (!destinationToAdd) {
+                        showMessage("No destination selected to add.", 'error');
+                        return;
+                    }
+                    showMessage("Adding to your trip...", 'info');
+                    try {
+                        await addToTrip(trip.id, destinationToAdd);
+                    } catch (error) {
+                        console.error("Error adding to trip:", error);
+                        showMessage("Failed to add destination to trip.", 'error');
+                    }
+                });
+                tripListModal.appendChild(tripItem);
+            });
+        }
+
+        // --- Event Listeners ---
+        closeModalBtn.addEventListener('click', closeTripModal);
+        tripModal.addEventListener('click', (e) => {
+            if (e.target === tripModal) {
+                closeTripModal();
+            }
+        });
+
+        createTripBtn.addEventListener('click', () => {
+            if (!currentUserId) {
+                showMessage("Please log in to create trips.", 'error');
+                return;
+            }
+            openTripModal();
+        });
+        
+        createTripModalBtn.addEventListener('click', async () => {
+            const tripName = newTripInput.value.trim();
+            if (!currentUserId) {
+                showMessage("Please log in to create a trip.", 'error');
+                return;
+            }
+            if (!tripName) {
+                showMessage("Please enter a name for the new trip.", 'error');
+                return;
+            }
+            closeTripModal(); // Close immediately for responsive UI
+            if (!destinationToAdd) {
+                showMessage("No destination selected to add.", 'error');
+                return;
+            }
+            showMessage("Creating new trip...", 'info');
+            try {
+                await createTrip(tripName, destinationToAdd);
+            } catch (error) {
+                console.error("Error creating new trip:", error);
+                showMessage("Failed to create new trip.", 'error');
+            }
+        });
+
+        // Handle autocomplete on input change
+        searchInput.addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase();
+            if (query.length < 2) {
+                autocompleteResults.classList.add('hide');
+                return;
+            }
+
+            const filtered = destinations.filter(dest => dest.name.toLowerCase().includes(query));
+            autocompleteResults.innerHTML = '';
+
+            if (filtered.length > 0) {
+                filtered.forEach(item => {
+                    const resultItem = document.createElement('div');
+                    resultItem.className = 'p-3 hover:bg-stone-100 cursor-pointer text-stone-700';
+                    resultItem.textContent = item.name;
+                    resultItem.addEventListener('click', () => {
+                        searchInput.value = item.name;
+                        autocompleteResults.classList.add('hide');
+                        handleSearch(item.name);
+                    });
+                    autocompleteResults.appendChild(resultItem);
+                });
+                autocompleteResults.classList.remove('hide');
+            } else {
+                autocompleteResults.classList.add('hide');
+            }
+        });
+
+        // Handle surprise me button
+        surpriseMeBtn.addEventListener('click', () => {
+            const randomIndex = Math.floor(Math.random() * destinations.length);
+            const randomDest = destinations[randomIndex];
+            searchInput.value = randomDest.name;
+            handleSearch(randomDest.name);
+        });
+
+        // Handle navigation buttons for suggestions
+        nextBtn.addEventListener('click', () => {
+            suggestionList.scrollBy({
+                left: 300,
+                behavior: 'smooth'
+            });
+        });
+
+        prevBtn.addEventListener('click', () => {
+            suggestionList.scrollBy({
+                left: -300,
+                behavior: 'smooth'
+            });
+        });
+
+        // Add event listeners for filter buttons
+        filterButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const filter = button.dataset.filter;
+                renderSuggestions(filter);
+                filterButtons.forEach(btn => btn.classList.remove('bg-amber-500', 'text-white'));
+                button.classList.add('bg-amber-500', 'text-white');
+            });
+        });
+
+        // Hide autocomplete when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!autocompleteResults.contains(e.target) && e.target !== searchInput) {
+                autocompleteResults.classList.add('hide');
+            }
+        });
+
+        // Initial render
+        renderSuggestions();
+        renderRecentlyViewed();
+        document.querySelector('[data-filter="all"]').classList.add('bg-amber-500', 'text-white');
+    </script>
+
+</body>
+
+</html>
