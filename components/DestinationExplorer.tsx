@@ -3,6 +3,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, doc, setDoc, deleteDoc, onSnapshot, collection, addDoc, updateDoc, arrayUnion, query, orderBy, limit } from 'firebase/firestore';
 
+
 // Data Mockup (In a real app, this would come from an API)
 const destinations = [
     { id: "tokyo-jp", name: "Tokyo, Japan", image: "https://via.placeholder.com/400x300/f5f5f4/44403c?text=Tokyo", description: "Vibrant city blending tradition and technology.", tags: ["city-break", "culture"], lat: 35.6895, lon: 139.6917 },
@@ -14,17 +15,21 @@ const destinations = [
     { id: "jaipur-in", name: "Jaipur, India", image: "https://via.placeholder.com/400x300/f5e0e0/8a2e2e?text=Jaipur", description: "The 'Pink City' is a cultural and historical gem.", tags: ["culture"], lat: 26.9124, lon: 75.7873 },
 ];
 
+
 const RECENTLY_VIEWED_KEY = 'voyage-recently-viewed';
+
 
 const app = initializeApp(JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}'));
 const db = getFirestore(app);
 const auth = getAuth(app);
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
+
 // Helper function to show a temporary message (logs to console)
 const showMessage = (message, type = 'success') => {
     console.log(`Message (${type}): ${message}`);
 };
+
 
 const Card = ({ destination, isFavorite, onToggleFavorite, onAddToTrip, onClick }) => {
     return (
@@ -45,6 +50,7 @@ const Card = ({ destination, isFavorite, onToggleFavorite, onAddToTrip, onClick 
     );
 };
 
+
 const TripCard = ({ trip }) => {
     return (
         <div className="bg-stone-100 p-4 rounded-xl shadow-inner min-w-[200px] cursor-pointer hover:bg-stone-200 transition-colors">
@@ -58,6 +64,7 @@ const TripCard = ({ trip }) => {
         </div>
     );
 };
+
 
 
 const App = () => {
@@ -77,7 +84,9 @@ const App = () => {
     const [communityFavorites, setCommunityFavorites] = useState([]);
     const [userTrips, setUserTrips] = useState([]);
 
+
     const suggestionListRef = useRef(null);
+
 
     // --- Firebase Auth & Listeners ---
     useEffect(() => {
@@ -101,6 +110,7 @@ const App = () => {
         return () => unsubscribe();
     }, []);
 
+
     // Listen for private favorites
     useEffect(() => {
         if (!userId) return;
@@ -113,6 +123,7 @@ const App = () => {
         });
         return () => unsubscribe();
     }, [userId]);
+
 
     // Listen for community favorites
     useEffect(() => {
@@ -136,6 +147,7 @@ const App = () => {
         return () => unsubscribe();
     }, []);
 
+
     // Listen for user trips
     useEffect(() => {
         if (!userId) return;
@@ -149,6 +161,7 @@ const App = () => {
         return () => unsubscribe();
     }, [userId]);
 
+
     // --- Data Manipulation Functions ---
     const toggleFavorite = async (destination) => {
         if (!isAuthenticated) {
@@ -158,7 +171,9 @@ const App = () => {
         const privateDocRef = doc(db, `artifacts/${appId}/users/${userId}/favorites`, destination.id);
         const publicDocRef = doc(db, `artifacts/${appId}/public/data/communityFavorites`, `${destination.id}-${userId}`);
 
+
         const isFavorite = favorites.some(fav => fav.id === destination.id);
+
 
         try {
             if (isFavorite) {
@@ -173,6 +188,7 @@ const App = () => {
             showMessage("Failed to update favorites.", 'error');
         }
     };
+
 
     const createTrip = async (tripName, destination = null) => {
         if (!isAuthenticated) return;
@@ -191,6 +207,7 @@ const App = () => {
         }
     };
 
+
     const addToTrip = async (tripId, destination) => {
         if (!isAuthenticated) return;
         const tripDocRef = doc(db, `artifacts/${appId}/users/${userId}/trips`, tripId);
@@ -205,16 +222,20 @@ const App = () => {
         }
     };
 
+
     // --- Component Logic & Event Handlers ---
     const handleSearch = async (query) => {
         if (!query) return;
+
 
         setSearchResults(null);
         setIsLoading(true);
         setLoadingMessage(`Generating a travel guide for ${query}...`);
 
+
         const apiKey = "";
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
 
         const systemPrompt = `You are an expert travel guide. Your task is to provide a concise and engaging travel guide for a given destination. Respond in JSON format only with the following schema:
         {
@@ -224,7 +245,9 @@ const App = () => {
             "tips": string[]
         }`;
 
+
         const userQuery = `Provide a travel guide for ${query}.`;
+
 
         const payload = {
             contents: [{ parts: [{ text: userQuery }] }],
@@ -237,6 +260,7 @@ const App = () => {
             }
         };
 
+
         try {
             const response = await fetch(apiUrl, {
                 method: 'POST',
@@ -244,11 +268,13 @@ const App = () => {
                 body: JSON.stringify(payload)
             });
 
+
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             const result = await response.json();
             const candidate = result.candidates?.[0];
+
 
             if (!candidate || !candidate.content?.parts?.[0]?.text) {
                 throw new Error("Invalid response format from Gemini API.");
@@ -265,6 +291,7 @@ const App = () => {
             }
             setSearchResults(guide);
 
+
         } catch (error) {
             console.error("Error fetching Gemini content:", error);
             setSearchResults({ error: "Failed to generate a guide. Please try again later." });
@@ -272,11 +299,13 @@ const App = () => {
             setIsLoading(false);
         }
 
+
         const dest = destinations.find(d => d.name === query);
         if (dest) {
             addRecentlyViewed(dest);
         }
     };
+
 
     const handleFilterChange = (filter) => {
         setActiveFilter(filter);
@@ -284,6 +313,7 @@ const App = () => {
         // Geolocation logic is complex for this single-file setup.
         // It's best handled with a dedicated component or service.
     };
+
 
     const filteredDestinations = () => {
         if (activeFilter === 'all') {
@@ -293,11 +323,13 @@ const App = () => {
         }
     };
 
+
     const handleSurpriseMe = () => {
         const randomIndex = Math.floor(Math.random() * destinations.length);
         const randomDest = destinations[randomIndex];
         handleSearch(randomDest.name);
     };
+
 
     const handleAutocomplete = (e) => {
         const query = e.target.value.toLowerCase();
@@ -308,6 +340,7 @@ const App = () => {
         const filtered = destinations.filter(dest => dest.name.toLowerCase().includes(query));
         setAutocomplete(filtered);
     };
+
 
     // A new function to handle the "Add to Trip" button click
     const handleAddToTrip = (destination) => {
@@ -326,6 +359,7 @@ const App = () => {
         }
     };
 
+
     const saveRecentlyViewed = (list) => {
         try {
             localStorage.setItem(RECENTLY_VIEWED_KEY, JSON.stringify(list));
@@ -333,6 +367,7 @@ const App = () => {
             console.error("Error saving to localStorage", e);
         }
     };
+
 
     const addRecentlyViewed = (destination) => {
         let list = getRecentlyViewed();
@@ -342,7 +377,9 @@ const App = () => {
         saveRecentlyViewed(list);
     };
 
+
     const recentlyViewed = getRecentlyViewed();
+
 
     return (
         <div className="bg-stone-50 flex flex-col items-center min-h-screen">
@@ -391,6 +428,7 @@ const App = () => {
                     <p className="mt-2 text-stone-500 text-sm">Discover your next luxury adventure.</p>
                 </div>
 
+
                 {/* Search Bar Section */}
                 <div className="w-full relative mb-8">
                     <div className="flex items-center space-x-3 p-4 bg-white border border-stone-200 rounded-full shadow-inner transition-all duration-300 focus-within:shadow-lg focus-within:border-stone-400">
@@ -412,6 +450,7 @@ const App = () => {
                     )}
                 </div>
 
+
                 {/* Explore by Interest Section */}
                 <div className="w-full mb-8">
                     <h2 className="text-xl font-semibold text-stone-700 mb-4">Explore by Interest</h2>
@@ -424,6 +463,7 @@ const App = () => {
                         ))}
                     </div>
                 </div>
+
 
                 {/* Top Suggestions Section */}
                 <div id="suggestions-section" className="w-full mb-8">
@@ -443,6 +483,7 @@ const App = () => {
                     </div>
                 </div>
 
+
                 {/* My Trips Section */}
                 {userTrips.length > 0 && (
                     <div className="w-full mb-8">
@@ -460,6 +501,7 @@ const App = () => {
                     </div>
                 )}
 
+
                 {/* My Favorites Section */}
                 {favorites.length > 0 && (
                     <div className="w-full mb-8">
@@ -471,6 +513,7 @@ const App = () => {
                         </div>
                     </div>
                 )}
+
 
                 {/* Community Favorites Section */}
                 {communityFavorites.length > 0 && (
@@ -484,6 +527,7 @@ const App = () => {
                     </div>
                 )}
 
+
                 {/* Recently Viewed Section */}
                 {recentlyViewed.length > 0 && (
                     <div className="w-full mb-8">
@@ -496,6 +540,7 @@ const App = () => {
                     </div>
                 )}
 
+
                 {/* AI-Powered Prompt Section */}
                 <div className="w-full p-6 bg-amber-50 rounded-2xl border border-amber-200 flex flex-col items-center text-center">
                     <i className="fas fa-magic text-amber-500 text-3xl mb-3"></i>
@@ -505,6 +550,7 @@ const App = () => {
                         ✨ Generate Guide
                     </button>
                 </div>
+
 
                 {/* Loading Indicator and Result Display */}
                 {isLoading ? (
@@ -545,6 +591,7 @@ const App = () => {
                 ) : null}
             </div>
 
+
             {/* Modal for adding to a trip */}
             {isModalOpen && (
                 <div className="modal">
@@ -576,6 +623,7 @@ const App = () => {
                 </div>
             )}
 
+
             {/* Bottom Navigation Bar */}
             <div className="fixed bottom-0 left-0 w-full bg-white border-t border-stone-200 shadow-lg flex justify-around items-center h-16">
                 <a href="#" className="flex flex-col items-center text-stone-400 hover:text-amber-500 transition-colors">
@@ -598,5 +646,6 @@ const App = () => {
         </div>
     );
 };
+
 
 export default App;
