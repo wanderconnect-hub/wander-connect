@@ -3,7 +3,10 @@ import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
-// Firebase config comes from .env variables
+// Debug: log all env variables Vite provides
+console.log("🔥 Full import.meta.env:", import.meta.env);
+
+// Build Firebase config from .env variables
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -13,8 +16,15 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
+// Debug: log config before initializing Firebase
+console.log("👉 Firebase Config:", firebaseConfig);
+
+// Extra safeguard: throw error if projectId is missing
+if (!firebaseConfig.projectId) {
+  throw new Error("❌ Firebase projectId is missing. Check your .env file and restart the dev server.");
+}
+
 // Initialize Firebase only once
-console.log("Firebase Config:", firebaseConfig);
 const app = initializeApp(firebaseConfig);
 
 // Export Firebase services
