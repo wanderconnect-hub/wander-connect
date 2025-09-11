@@ -3,8 +3,6 @@ import { sql } from '@vercel/postgres';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
-// IMPORTANT: Add a JWT_SECRET to your Vercel Environment Variables!
-// It can be any long, random string.
 const JWT_SECRET = process.env.JWT_SECRET;
 
 export default async function handler(req, res) {
@@ -20,14 +18,28 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Name, email, and password are required.' });
     }
     try {
-      const password_hash = await bcrypt.hash(password, 10); // Hash the password
-      await sql`
+      const password_hash = await bcrypt.hash(password, 10);
+
+      const { rows } = await sql`
         INSERT INTO users (email, password_hash, name)
-        VALUES (${email}, ${password_hash}, ${name});
+        VALUES (${email}, ${password_hash}, ${name})
+        RETURNING id, email, name;
       `;
-      return res.status(201).json({ message: 'User created successfully.' });
+      const newUser = rows[0];
+
+      // Create token immediately
+      const token = jwt.sign(
+        { userId: newUser.id, email: newUser.email, name: newUser.name },
+        JWT_SECRET,
+        { expiresIn: '1d' }
+      );
+
+      return res.status(201).json({
+        message: 'User created successfully.',
+        token,
+        user: newUser,
+      });
     } catch (error) {
-      // Check for unique email error (code 23505 in Postgres)
       if (error.code === '23505') {
         return res.status(409).json({ error: 'An account with this email already exists.' });
       }
@@ -46,13 +58,22 @@ export default async function handler(req, res) {
       if (!user) {
         return res.status(404).json({ error: 'Invalid credentials.' });
       }
+
       const isPasswordValid = await bcrypt.compare(password, user.password_hash);
       if (!isPasswordValid) {
         return res.status(404).json({ error: 'Invalid credentials.' });
       }
-      // Create a token that proves the user is logged in
-      const token = jwt.sign({ userId: user.id, email: user.email, name: user.name }, JWT_SECRET, { expiresIn: '1d' });
-      return res.status(200).json({ token });
+
+      const token = jwt.sign(
+        { userId: user.id, email: user.email, name: user.name },
+        JWT_SECRET,
+        { expiresIn: '1d' }
+      );
+
+      return res.status(200).json({
+        token,
+        user: { id: user.id, email: user.email, name: user.name },
+      });
     } catch (error) {
       return res.status(500).json({ error: 'Login failed.', details: error.message });
     }
