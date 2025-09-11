@@ -1,4 +1,6 @@
 // File: App.tsx - FINAL PRODUCTION-READY VERSION
+console.log("🧪 Direct test:", import.meta.env.VITE_FIREBASE_PROJECT_ID);
+console.log("🧪 Test Env Var:", import.meta.env.VITE_TEST_HELLO);
 import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, NavLink, useParams } from 'react-router-dom';
 import { HomeIcon, UsersIcon, GlobeAltIcon, UserCircleIcon } from './constants';
