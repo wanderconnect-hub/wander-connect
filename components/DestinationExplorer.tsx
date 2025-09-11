@@ -18,7 +18,7 @@ const RECENTLY_VIEWED_KEY = 'voyage-recently-viewed';
 
 //const app = initializeApp(JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}'));
 //const db = getFirestore(app);
-const auth = getAuth(app);
+//const auth = getAuth(app);
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
 
