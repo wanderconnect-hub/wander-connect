@@ -1,8 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, doc, setDoc, deleteDoc, onSnapshot, collection, addDoc, updateDoc, arrayUnion, query, orderBy, limit } from 'firebase/firestore';
-
+//import { initializeApp } from 'firebase/app';
 
 // Data Mockup (In a real app, this would come from an API)
 const destinations = [
@@ -20,7 +17,7 @@ const RECENTLY_VIEWED_KEY = 'voyage-recently-viewed';
 
 
 const app = initializeApp(JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}'));
-const db = getFirestore(app);
+//const db = getFirestore(app);
 const auth = getAuth(app);
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
