@@ -19,7 +19,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ success: false, error: "Action is required." });
     }
 
-    // --- REGISTER ---
+    /// --- REGISTER ---
     if (action === "register") {
       if (!email || !password || !name) {
         return res.status(400).json({ success: false, error: "Name, email, and password are required." });
