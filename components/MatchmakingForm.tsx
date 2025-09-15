@@ -4,7 +4,7 @@ import type { TravelPartnerRequest, User } from '../types';
 import { ChevronLeftIcon, ChevronRightIcon } from '../constants';
 import { fetchPartnerRequests } from '../services/apiServices';
 
-// ---- Helper API call to respond to partner request (accept/reject) ----
+/// ---- Helper API call to respond to partner request (accept/reject) ----
 async function respondToPartnerRequest(requestId: number, action: 'accept' | 'reject') {
   const response = await fetch('/api/partner-requests', {
     method: 'POST',
