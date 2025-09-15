@@ -1,45 +1,60 @@
 import { sql } from '@vercel/postgres';
+import jwt from 'jsonwebtoken';
+
+const JWT_SECRET = process.env.JWT_SECRET;
+
+const verifyToken = (req) => {
+  if (!JWT_SECRET) return null;
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) return null;
+
+  try {
+    return jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
+  } catch {
+    return null;
+  }
+};
 
 export default async function handler(req, res) {
-  // --- GET: fetch all pending partner requests ---
-  if (req.method === 'GET') {
-    try {
+  try {
+    if (req.method === 'GET') {
       const result = await sql`
-        SELECT id, sender_id, recipient_id, trip_description, image_url
+        SELECT id, sender_id, recipient_id, trip_description, image_url, status, created_at
         FROM partner_requests
         WHERE status = 'pending'
         ORDER BY created_at DESC;
       `;
-      return res.status(200).json(result.rows);
-    } catch (error) {
-      return res.status(500).json({ error: error.message });
+      return res.status(200).json({ success: true, data: result.rows });
     }
-  }
 
-  // --- POST: create a new partner request OR respond ---
-  else if (req.method === 'POST') {
-    const { senderId, recipientId, tripDescription, imageUrl, requestId, action } = req.body;
+    if (req.method === 'POST') {
+      const userPayload = verifyToken(req);
+      if (!userPayload?.userId) {
+        return res.status(401).json({ success: false, error: 'Unauthorized' });
+      }
 
-    try {
-      // --- CASE 1: Respond to a request (accept/reject) ---
+      const { senderId, recipientId, tripDescription, imageUrl, requestId, action } = req.body;
+
+      // --- Respond to request (accept/reject) ---
       if (requestId && action) {
         if (!['accept', 'reject'].includes(action)) {
-          return res.status(400).json({ error: 'Invalid action' });
+          return res.status(400).json({ success: false, error: 'Invalid action' });
         }
 
         const newStatus = action === 'accept' ? 'accepted' : 'rejected';
+
         await sql`
           UPDATE partner_requests
           SET status = ${newStatus}
           WHERE id = ${requestId};
         `;
 
-        return res.status(200).json({ message: `Request ${action}ed successfully` });
+        return res.status(200).json({ success: true, message: `Request ${action}ed successfully` });
       }
 
-      // --- CASE 2: Create a new request ---
+      // --- Create new request ---
       if (!senderId || !recipientId || !tripDescription) {
-        return res.status(400).json({ error: 'Missing required fields' });
+        return res.status(400).json({ success: false, error: 'Missing required fields' });
       }
 
       await sql`
@@ -47,15 +62,13 @@ export default async function handler(req, res) {
         VALUES (${senderId}, ${recipientId}, ${tripDescription}, ${imageUrl || null}, 'pending');
       `;
 
-      return res.status(201).json({ message: 'Partner request sent!' });
-    } catch (error) {
-      return res.status(500).json({ error: error.message });
+      return res.status(201).json({ success: true, message: 'Partner request sent!' });
     }
-  }
 
-  // --- Unsupported methods ---
-  else {
     res.setHeader('Allow', ['GET', 'POST']);
-    return res.status(405).end(`Method ${req.method} Not Allowed`);
+    return res.status(405).json({ success: false, error: `Method ${req.method} Not Allowed` });
+  } catch (error) {
+    console.error('Error in /api/partner-requests:', error);
+    return res.status(500).json({ success: false, error: 'Unexpected server error.' });
   }
 }

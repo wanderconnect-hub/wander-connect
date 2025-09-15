@@ -16,40 +16,35 @@ const verifyToken = (req) => {
 };
 
 export default async function handler(req, res) {
-  if (req.method === 'GET') {
-    try {
-      // REMOVE bio from below if not present in table
+  try {
+    if (req.method === 'GET') {
       const result = await sql`SELECT id, name, email, avatar_url FROM users;`;
-      return res.status(200).json(result.rows);
-    } catch (error) {
-      return res.status(500).json({ error: error.message });
-    }
-  }
-
-  if (req.method === 'PUT') {
-    const userPayload = verifyToken(req);
-    if (!userPayload?.userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      return res.status(200).json({ success: true, data: result.rows });
     }
 
-    try {
+    if (req.method === 'PUT') {
+      const userPayload = verifyToken(req);
+      if (!userPayload?.userId) {
+        return res.status(401).json({ success: false, error: 'Unauthorized' });
+      }
+
       const { avatarUrl } = req.body;
       if (!avatarUrl) {
-        return res.status(400).json({ error: 'avatarUrl is required.' });
+        return res.status(400).json({ success: false, error: 'avatarUrl is required.' });
       }
 
       await sql`
-        UPDATE users 
-        SET avatar_url = ${avatarUrl}
+        UPDATE users SET avatar_url = ${avatarUrl}
         WHERE id = ${userPayload.userId};
       `;
 
-      return res.status(200).json({ message: 'Avatar updated successfully.' });
-    } catch (error) {
-      return res.status(500).json({ error: error.message });
+      return res.status(200).json({ success: true, message: 'Avatar updated successfully.' });
     }
-  }
 
-  res.setHeader('Allow', ['GET', 'PUT']);
-  return res.status(405).end(`Method ${req.method} Not Allowed`);
+    res.setHeader('Allow', ['GET', 'PUT']);
+    return res.status(405).json({ success: false, error: `Method ${req.method} Not Allowed` });
+  } catch (error) {
+    console.error('Error in /api/users:', error);
+    return res.status(500).json({ success: false, error: 'Unexpected server error.' });
+  }
 }

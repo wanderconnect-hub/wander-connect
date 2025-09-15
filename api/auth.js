@@ -1,4 +1,3 @@
-// File: /api/auth.js
 import { sql } from '@vercel/postgres';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -6,78 +5,97 @@ import jwt from 'jsonwebtoken';
 const JWT_SECRET = process.env.JWT_SECRET;
 
 export default async function handler(req, res) {
-  const { action, email, password, name } = req.body;
-
-  if (!JWT_SECRET) {
-    return res.status(500).json({ error: 'JWT_SECRET is not configured on the server.' });
-  }
-
-  // --- REGISTER A NEW USER ---
-  if (action === 'register') {
-    if (!email || !password || !name) {
-      return res.status(400).json({ error: 'Name, email, and password are required.' });
+  try {
+    if (req.method !== "POST") {
+      return res.status(405).json({ success: false, error: "Method not allowed. Use POST." });
     }
-    try {
-      const password_hash = await bcrypt.hash(password, 10);
 
-      const { rows } = await sql`
-        INSERT INTO users (email, password_hash, name)
-        VALUES (${email}, ${password_hash}, ${name})
-        RETURNING id, email, name;
-      `;
-      const newUser = rows[0];
-
-      // Create token immediately
-      const token = jwt.sign(
-        { userId: newUser.id, email: newUser.email, name: newUser.name },
-        JWT_SECRET,
-        { expiresIn: '1d' }
-      );
-
-      return res.status(201).json({
-        message: 'User created successfully.',
-        token,
-        user: newUser,
-      });
-    } catch (error) {
-      if (error.code === '23505') {
-        return res.status(409).json({ error: 'An account with this email already exists.' });
-      }
-      return res.status(500).json({ error: 'Failed to create user.', details: error.message });
+    if (!JWT_SECRET) {
+      return res.status(500).json({ success: false, error: "JWT_SECRET is not configured on the server." });
     }
-  }
 
-  // --- LOG IN A USER ---
-  if (action === 'login') {
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required.' });
+    const { action, email, password, name } = req.body || {};
+    if (!action) {
+      return res.status(400).json({ success: false, error: "Action is required." });
     }
-    try {
-      const { rows } = await sql`SELECT * FROM users WHERE email = ${email};`;
-      const user = rows[0];
-      if (!user) {
-        return res.status(404).json({ error: 'Invalid credentials.' });
+
+    // --- REGISTER ---
+    if (action === "register") {
+      if (!email || !password || !name) {
+        return res.status(400).json({ success: false, error: "Name, email, and password are required." });
       }
 
-      const isPasswordValid = await bcrypt.compare(password, user.password_hash);
-      if (!isPasswordValid) {
-        return res.status(404).json({ error: 'Invalid credentials.' });
+      try {
+        const password_hash = await bcrypt.hash(password, 10);
+
+        const { rows } = await sql`
+          INSERT INTO users (email, password_hash, name)
+          VALUES (${email}, ${password_hash}, ${name})
+          RETURNING id, email, name;
+        `;
+
+        const newUser = rows[0];
+
+        const token = jwt.sign(
+          { userId: newUser.id, email: newUser.email, name: newUser.name },
+          JWT_SECRET,
+          { expiresIn: "1d" }
+        );
+
+        return res.status(201).json({
+          success: true,
+          message: "User created successfully.",
+          token,
+          user: newUser,
+        });
+      } catch (error) {
+        if (error.code === "23505") {
+          return res.status(409).json({ success: false, error: "An account with this email already exists." });
+        }
+        console.error("Register error:", error);
+        return res.status(500).json({ success: false, error: "Failed to create user." });
+      }
+    }
+
+    // --- LOGIN ---
+    if (action === "login") {
+      if (!email || !password) {
+        return res.status(400).json({ success: false, error: "Email and password are required." });
       }
 
-      const token = jwt.sign(
-        { userId: user.id, email: user.email, name: user.name },
-        JWT_SECRET,
-        { expiresIn: '1d' }
-      );
+      try {
+        const { rows } = await sql`SELECT * FROM users WHERE email = ${email};`;
+        const user = rows[0];
 
-      return res.status(200).json({
-        token,
-        user: { id: user.id, email: user.email, name: user.name },
-      });
-    } catch (error) {
-      return res.status(500).json({ error: 'Login failed.', details: error.message });
+        if (!user) {
+          return res.status(404).json({ success: false, error: "Invalid credentials." });
+        }
+
+        const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+        if (!isPasswordValid) {
+          return res.status(404).json({ success: false, error: "Invalid credentials." });
+        }
+
+        const token = jwt.sign(
+          { userId: user.id, email: user.email, name: user.name },
+          JWT_SECRET,
+          { expiresIn: "1d" }
+        );
+
+        return res.status(200).json({
+          success: true,
+          token,
+          user: { id: user.id, email: user.email, name: user.name },
+        });
+      } catch (error) {
+        console.error("Login error:", error);
+        return res.status(500).json({ success: false, error: "Login failed." });
+      }
     }
-  }
 
-  return res.status(400).json({ error: 'Invalid action.' });
+    return res.status(400).json({ success: false, error: "Invalid action." });
+  } catch (err) {
+    console.error("Auth API crashed:", err);
+    return res.status(500).json({ success: false, error: "Unexpected server error." });
+  }
 }

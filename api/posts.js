@@ -1,4 +1,3 @@
-// File: /api/posts.js - FIXED PRODUCTION VERSION
 import { sql } from '@vercel/postgres';
 import jwt from 'jsonwebtoken';
 
@@ -26,10 +25,10 @@ export default async function handler(req, res) {
   try {
     const userPayload = verifyToken(req);
 
-    // ✅ Only require login for POST/PUT/DELETE
+    // ✅ Require login only for write operations
     const requireAuth = req.method !== 'GET';
     if (requireAuth && (!userPayload || !userPayload.userId)) {
-      return res.status(401).json({ error: 'Unauthorized: Invalid or missing token.' });
+      return res.status(401).json({ success: false, error: 'Unauthorized: Invalid or missing token.' });
     }
 
     if (req.method === 'GET') {
@@ -61,7 +60,7 @@ export default async function handler(req, res) {
             (
               SELECT json_agg(json_build_object(
                 'id', c.id,
-                'text', c.content,   -- ✅ FIXED HERE
+                'text', c.content,
                 'timestamp', c.created_at,
                 'user', json_build_object(
                   'id', cu.id,
@@ -82,6 +81,7 @@ export default async function handler(req, res) {
       `;
 
       return res.status(200).json({ 
+        success: true,
         posts, 
         totalPages: Math.ceil(totalPosts / limit),
         currentPage: page
@@ -91,7 +91,7 @@ export default async function handler(req, res) {
     if (req.method === 'POST') {
       const { content, mediaUrl, mediaType } = req.body;
       if (!content && !mediaUrl) {
-        return res.status(400).json({ error: 'Post must have content or media.' });
+        return res.status(400).json({ success: false, error: 'Post must have content or media.' });
       }
 
       await sql`
@@ -99,13 +99,13 @@ export default async function handler(req, res) {
         VALUES (${content || null}, ${userPayload.userId}, ${mediaUrl || null}, ${mediaType || null});
       `;
 
-      return res.status(201).json({ message: 'Post created successfully.' });
+      return res.status(201).json({ success: true, message: 'Post created successfully.' });
     }
 
     if (req.method === 'PUT') {
       const { id, content } = req.body;
       if (id === undefined) {
-        return res.status(400).json({ error: 'Post ID is required.' });
+        return res.status(400).json({ success: false, error: 'Post ID is required.' });
       }
 
       const result = await sql`
@@ -114,16 +114,16 @@ export default async function handler(req, res) {
       `;
 
       if (result.rowCount === 0) {
-        return res.status(404).json({ error: 'Post not found or not authorized to edit.' });
+        return res.status(404).json({ success: false, error: 'Post not found or not authorized to edit.' });
       }
 
-      return res.status(200).json({ message: 'Post updated successfully.' });
+      return res.status(200).json({ success: true, message: 'Post updated successfully.' });
     }
 
     if (req.method === 'DELETE') {
       const { id } = req.query;
       if (!id) {
-        return res.status(400).json({ error: 'Post ID is required.' });
+        return res.status(400).json({ success: false, error: 'Post ID is required.' });
       }
 
       const result = await sql`
@@ -131,17 +131,16 @@ export default async function handler(req, res) {
       `;
 
       if (result.rowCount === 0) {
-        return res.status(404).json({ error: 'Post not found or not authorized to delete.' });
+        return res.status(404).json({ success: false, error: 'Post not found or not authorized to delete.' });
       }
 
-      return res.status(200).json({ message: 'Post deleted successfully.' });
+      return res.status(200).json({ success: true, message: 'Post deleted successfully.' });
     }
 
     res.setHeader('Allow', ['GET', 'POST', 'PUT', 'DELETE']);
-    return res.status(405).end(`Method ${req.method} Not Allowed`);
+    return res.status(405).json({ success: false, error: `Method ${req.method} Not Allowed` });
   } catch (error) {
-    // ✅ Better error logging
     console.error("Error in /api/posts:", error);
-    return res.status(500).json({ error: error.message, stack: error.stack });
+    return res.status(500).json({ success: false, error: 'Unexpected server error.' });
   }
 }
